@@ -1,0 +1,27 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio cache/options
+.vs/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+
+# Logs
+*.log
+
+# Uploaded runtime content
+wwwroot/uploads/*
+wwwroot/profile-pictures/*
+!wwwroot/uploads/.gitkeep
+!wwwroot/profile-pictures/.gitkeep
