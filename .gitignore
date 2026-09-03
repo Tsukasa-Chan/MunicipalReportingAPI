@@ -21,7 +21,7 @@
 *.log
 
 # Uploaded runtime content
-wwwroot/uploads/*
-wwwroot/profile-pictures/*
-!wwwroot/uploads/.gitkeep
-!wwwroot/profile-pictures/.gitkeep
+**/wwwroot/uploads/*
+**/wwwroot/profile-pictures/*
+!**/wwwroot/uploads/.gitkeep
+!**/wwwroot/profile-pictures/.gitkeep
