@@ -181,6 +181,17 @@ namespace MunicipalReportingAPI.Controllers
                 var uploadsFolder = Path.Combine(webRootPath, "uploads");
                 Directory.CreateDirectory(uploadsFolder);
 
+                if (!string.IsNullOrEmpty(report.ImageUrl))
+                {
+                    var oldImagePath = Path.Combine(webRootPath, report.ImageUrl.TrimStart('/'));
+
+                    if (System.IO.File.Exists(oldImagePath))
+                    {
+                        System.IO.File.Delete(oldImagePath);
+                    }
+
+                }
+
                 var fileName = Guid.NewGuid() + Path.GetExtension(dto.Image.FileName);
                 var filePath = Path.Combine(uploadsFolder, fileName);
 
@@ -219,7 +230,7 @@ namespace MunicipalReportingAPI.Controllers
         }
 
 
-        [Authorize(Roles ="Admin")]
+        [Authorize(Roles ="Admin,Supervisor")]
         [HttpPut("{id}/status")]
         public async Task<IActionResult> UpdateStatus(int id, [FromQuery] ReportStatus status)
         {
