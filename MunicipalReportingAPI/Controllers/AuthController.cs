@@ -9,7 +9,7 @@ using MunicipalReportingAPI.Helpers;
 using MunicipalReportingAPI.Models;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-
+// This is a comment
 namespace MunicipalReportingAPI.Controllers
 {
     [Route("api/[controller]")]
