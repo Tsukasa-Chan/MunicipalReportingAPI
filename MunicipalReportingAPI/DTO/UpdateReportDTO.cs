@@ -20,6 +20,9 @@ namespace MunicipalReportingAPI.DTO
         [Required]
         public double Longitude { get; set; }
 
+        [MaxLength(1000)]
+        public string? Description { get; set; }
+
         public IFormFile? Image { get; set; }
     }
 }

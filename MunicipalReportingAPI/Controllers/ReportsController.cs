@@ -127,6 +127,7 @@ namespace MunicipalReportingAPI.Controllers
                     Location = dto.Location,
                     Latitude = dto.Latitude,
                     Longitude = dto.Longitude,
+                    Description = dto.Description,
                     ImageUrl = imageUrl,
                     Status = ReportStatus.Reported,
                     CreatedAt = DateTime.UtcNow,
@@ -160,6 +161,7 @@ namespace MunicipalReportingAPI.Controllers
             report.Location = dto.Location;
             report.Latitude = dto.Latitude;
             report.Longitude = dto.Longitude;
+            report.Description = dto.Description;
             report.UpdatedAt = DateTime.UtcNow;
 
             if(dto.Image != null)

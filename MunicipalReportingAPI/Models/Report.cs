@@ -9,6 +9,7 @@
         public string Location { get; set; }
         public double Latitude { get; set; }
         public double Longitude { get; set; }
+        public string? Description { get; set; }
         public ReportStatus Status { get; set; } = ReportStatus.Reported;
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
