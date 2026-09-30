@@ -224,6 +224,16 @@ namespace MunicipalReportingAPI.Controllers
                 return Forbid();
             }
 
+            if (!string.IsNullOrEmpty(report.ImageUrl))
+            {
+                var imagePath = Path.Combine(Directory.GetCurrentDirectory(),
+                    "wwwroot", report.ImageUrl.TrimStart('/'));
+
+                if (System.IO.File.Exists(imagePath))
+                {
+                    System.IO.File.Delete(imagePath);
+                }
+            }
 
             _context.Reports.Remove(report);
             await _context.SaveChangesAsync();
