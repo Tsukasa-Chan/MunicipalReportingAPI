@@ -183,7 +183,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// In Development the http address (used by the Flutter emulator) must not be
+// redirected to https, because the emulator cannot trust the local dev certificate.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseStaticFiles();
 
