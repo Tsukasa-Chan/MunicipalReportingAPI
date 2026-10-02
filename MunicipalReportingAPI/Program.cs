@@ -80,6 +80,11 @@ builder.Services
 
         // User settings
         options.User.RequireUniqueEmail = true;
+
+        // Lockout (brute-force protection)
+        options.Lockout.AllowedForNewUsers = true;
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
     })
     .AddEntityFrameworkStores<MunicipalDBContext>()
     .AddDefaultTokenProviders();

@@ -195,7 +195,14 @@ namespace MunicipalReportingAPI.Controllers
             var result = await _signInManager.CheckPasswordSignInAsync(
                 user,
                 dto.Password,
-                false);
+                true);
+
+            if (result.IsLockedOut)
+            {
+                return StatusCode(
+                    StatusCodes.Status429TooManyRequests,
+                    "Too many failed attempts. Please try again in 15 minutes.");
+            }
 
             if (!result.Succeeded)
             {
@@ -376,7 +383,7 @@ namespace MunicipalReportingAPI.Controllers
                 .Where(rt => rt.UserId == user.Id && !rt.IsRevoked)
                 .ToListAsync();
 
-            foreach(var t in userTokens)
+            foreach (var t in userTokens)
             {
                 t.IsRevoked = true;
             }
@@ -391,7 +398,7 @@ namespace MunicipalReportingAPI.Controllers
         {
             var user = await _userManager.FindByEmailAsync(dto.Email);
 
-            if(user == null || !user.EmailConfirmed)
+            if (user == null || !user.EmailConfirmed)
             {
                 return Ok("If the account exists, a password reset email has been sent");
             }
@@ -428,7 +435,7 @@ namespace MunicipalReportingAPI.Controllers
         {
             var user = await _userManager.FindByEmailAsync(dto.Email);
 
-            if(user == null)
+            if (user == null)
             {
                 return BadRequest("Invalid request");
             }
@@ -467,14 +474,14 @@ namespace MunicipalReportingAPI.Controllers
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
 
 
-            if(userIdClaim == null)
+            if (userIdClaim == null)
             {
                 return Unauthorized();
             }
 
             var user = await _userManager.FindByIdAsync(userIdClaim.Value);
 
-            if(user == null)
+            if (user == null)
             {
                 return NotFound();
             }
@@ -495,7 +502,7 @@ namespace MunicipalReportingAPI.Controllers
                 .Where(r => r.UserId == user.Id)
                 .ToListAsync();
 
-            foreach(var report in reports)
+            foreach (var report in reports)
             {
                 if (!string.IsNullOrEmpty(report.ImageUrl))
                 {
@@ -514,15 +521,16 @@ namespace MunicipalReportingAPI.Controllers
 
             if (!string.IsNullOrEmpty(user.ProfilePictureUrl))
             {
-               
+
                 var profilePicturePath = Path.Combine(
-                    Directory.GetCurrentDirectory(), 
-                    "wwwroot", 
+                    Directory.GetCurrentDirectory(),
+                    "wwwroot",
                     user.ProfilePictureUrl.TrimStart('/'));
 
-                    if (System.IO.File.Exists(profilePicturePath)){
+                if (System.IO.File.Exists(profilePicturePath))
+                {
                     System.IO.File.Delete(profilePicturePath);
-                    }       
+                }
             }
 
             var result = await _userManager.DeleteAsync(user);

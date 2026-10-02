@@ -52,7 +52,7 @@ namespace MunicipalReportingAPI.Controllers
 
             var reports = await query.OrderByDescending(r => r.CreatedAt).ToListAsync();
 
-            return Ok(reports);
+            return Ok(reports.Select(ReportResponseDTO.FromReport));
         }
 
         [HttpGet("{id}")]
@@ -60,12 +60,12 @@ namespace MunicipalReportingAPI.Controllers
         {
             var report = await _context.Reports.Include(r => r.User).FirstOrDefaultAsync(r => r.Id == id);
 
-            if(report == null)
+            if (report == null)
             {
                 return NotFound();
             }
 
-            return Ok(report);
+            return Ok(ReportResponseDTO.FromReport(report));
         }
 
 
@@ -81,7 +81,7 @@ namespace MunicipalReportingAPI.Controllers
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
 
-            return Ok(reports);
+            return Ok(reports.Select(ReportResponseDTO.FromReport));
         }
 
         [Authorize]
@@ -120,25 +120,25 @@ namespace MunicipalReportingAPI.Controllers
                 imageUrl = $"/uploads/{fileName}";
             }
 
-                var report = new Report
-                {
-                    IssueCategory = dto.IssueCategory,
-                    IssueType = dto.IssueType,
-                    Location = dto.Location,
-                    Latitude = dto.Latitude,
-                    Longitude = dto.Longitude,
-                    Description = dto.Description,
-                    ImageUrl = imageUrl,
-                    Status = ReportStatus.Reported,
-                    CreatedAt = DateTime.UtcNow,
-                    UserId = GetCurrentUserId()
-                };
+            var report = new Report
+            {
+                IssueCategory = dto.IssueCategory,
+                IssueType = dto.IssueType,
+                Location = dto.Location,
+                Latitude = dto.Latitude,
+                Longitude = dto.Longitude,
+                Description = dto.Description,
+                ImageUrl = imageUrl,
+                Status = ReportStatus.Reported,
+                CreatedAt = DateTime.UtcNow,
+                UserId = GetCurrentUserId()
+            };
 
-                _context.Reports.Add(report);
-                await _context.SaveChangesAsync();
+            _context.Reports.Add(report);
+            await _context.SaveChangesAsync();
 
-                return Ok(report);
-            
+            return Ok(ReportResponseDTO.FromReport(report));
+
         }
 
         [Authorize]
@@ -146,12 +146,12 @@ namespace MunicipalReportingAPI.Controllers
         public async Task<IActionResult> UpdateReport(int id, [FromForm] UpdateReportDTO dto)
         {
             var report = await _context.Reports.FindAsync(id);
-            if(report == null)
+            if (report == null)
             {
                 return NotFound();
             }
 
-            if(report.UserId != GetCurrentUserId())
+            if (report.UserId != GetCurrentUserId())
             {
                 return Forbid();
             }
@@ -164,7 +164,7 @@ namespace MunicipalReportingAPI.Controllers
             report.Description = dto.Description;
             report.UpdatedAt = DateTime.UtcNow;
 
-            if(dto.Image != null)
+            if (dto.Image != null)
             {
                 var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
                 var extension = Path.GetExtension(dto.Image.FileName).ToLower();
@@ -174,7 +174,7 @@ namespace MunicipalReportingAPI.Controllers
                     return BadRequest("Only JPG and PNG images are allowed");
                 }
 
-                if(dto.Image.Length > 5 * 1024 * 1024)
+                if (dto.Image.Length > 5 * 1024 * 1024)
                 {
                     return BadRequest("Image must be smaller than 5MB");
                 }
@@ -206,7 +206,7 @@ namespace MunicipalReportingAPI.Controllers
             }
 
             await _context.SaveChangesAsync();
-            return Ok(report);
+            return Ok(ReportResponseDTO.FromReport(report));
         }
 
         [Authorize]
@@ -214,7 +214,7 @@ namespace MunicipalReportingAPI.Controllers
         public async Task<IActionResult> DeleteReport(int id)
         {
             var report = await _context.Reports.FindAsync(id);
-            if(report == null)
+            if (report == null)
             {
                 return NotFound();
             }
@@ -242,12 +242,12 @@ namespace MunicipalReportingAPI.Controllers
         }
 
 
-        [Authorize(Roles ="Admin,Supervisor")]
+        [Authorize(Roles = "Admin,Supervisor")]
         [HttpPut("{id}/status")]
         public async Task<IActionResult> UpdateStatus(int id, [FromQuery] ReportStatus status)
         {
             var report = await _context.Reports.FindAsync(id);
-            if(report == null)
+            if (report == null)
             {
                 return NotFound();
             }
@@ -256,7 +256,7 @@ namespace MunicipalReportingAPI.Controllers
             report.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
-            return Ok(report);
+            return Ok(ReportResponseDTO.FromReport(report));
         }
     }
 }
