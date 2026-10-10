@@ -21,19 +21,22 @@ namespace MunicipalReportingAPI.Controllers
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IConfiguration _config;
         private readonly IEmailService _emailService;
+        private readonly IUserDeletionService _userDeletionService;
 
         public AuthController(
             MunicipalDBContext context,
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             IConfiguration config,
-            IEmailService emailService)
+            IEmailService emailService,
+            IUserDeletionService userDeletionService)
         {
             _context = context;
             _userManager = userManager;
             _signInManager = signInManager;
             _config = config;
             _emailService = emailService;
+            _userDeletionService = userDeletionService;
         }
 
         [HttpPost("register")]
@@ -46,65 +49,77 @@ namespace MunicipalReportingAPI.Controllers
                 return BadRequest("Email already exists");
             }
 
+            // Residents must pick their home Area (the Ward is derived from it)
+            if (!await _context.Areas.AnyAsync(a => a.Id == dto.AreaId))
+            {
+                return BadRequest("The selected area does not exist");
+            }
+
             var user = new ApplicationUser
             {
                 FullName = dto.FullName,
                 Email = dto.Email,
                 UserName = dto.Email,
+                AreaId = dto.AreaId,
                 EmailConfirmed = false
             };
 
-            var result = await _userManager.CreateAsync(
-                user,
-                dto.Password);
+            var result = await _userManager.CreateAsync(user, dto.Password);
 
             if (!result.Succeeded)
             {
-                var errors = result.Errors
-                    .Select(e => e.Description)
-                    .ToList();
-
+                var errors = result.Errors.Select(e => e.Description).ToList();
                 return BadRequest(errors);
             }
 
-            await _userManager.AddToRoleAsync(
-                user,
-                "User");
+            await _userManager.AddToRoleAsync(user, "User");
 
-            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var emailSent = true;
 
-            var confirmationUrl =
-                $"{_config["Email:ConfirmationUrl"]}" +
-                $"?userId={user.Id}" +
-                $"&token={Uri.EscapeDataString(token)}";
+            try
+            {
+                var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 
-            await _emailService.SendEmailAsync(
-                user.Email,
-                "Verify your Municipal Reporting account",
-                $"""
-                <h2>Welcome to Municipal Reporting</h2>
+                var confirmationUrl =
+                    $"{_config["Email:ConfirmationUrl"]}" +
+                    $"?userId={user.Id}" +
+                    $"&token={Uri.EscapeDataString(token)}";
 
-                <p>Hi {user.FullName},</p>
+                await _emailService.SendEmailAsync(
+                    user.Email,
+                    "Verify your Municipal Reporting account",
+                    $"""
+            <h2>Welcome to Municipal Reporting</h2>
 
-                <p>Thank you for registering.</p>
+            <p>Hi {user.FullName},</p>
 
-                <p>Please click the button below to verify your email address:</p>
+            <p>Thank you for registering.</p>
 
-                <p>
-                    <a href="{confirmationUrl}">
-                        Verify Email Address
-                    </a>
-                </p>
+            <p>Please click the button below to verify your email address:</p>
 
-                <p>
-                    If you did not create this account, you can ignore this email.
-                </p>
-                """
-            );
+            <p>
+                <a href="{confirmationUrl}">
+                    Verify Email Address
+                </a>
+            </p>
+
+            <p>
+                If you did not create this account, you can ignore this email.
+            </p>
+            """
+                );
+            }
+            catch (Exception)
+            {
+                emailSent = false;
+            }
 
             return Ok(new
             {
-                message = "Registration successful. Please check your email to verify your account."
+                emailSent,
+                message = emailSent
+                    ? "Registration successful. Please check your email to verify your account."
+                    : "Registration successful, but we couldn't send the verification email. Please use 'Resend confirmation' to try again."
             });
         }
 
@@ -239,6 +254,10 @@ namespace MunicipalReportingAPI.Controllers
             });
         }
 
+        // Two refresh calls with the same token this close together are a client race
+        // (e.g. parallel requests that all got a 401), not a stolen token.
+        private const int RotationGraceSeconds = 10;
+
         [HttpPost("refresh")]
         public async Task<IActionResult> Refresh(
             RefreshTokenDTO dto)
@@ -247,9 +266,36 @@ namespace MunicipalReportingAPI.Controllers
                 .FirstOrDefaultAsync(
                     rt => rt.Token == dto.RefreshToken);
 
-            if (storedToken == null ||
-                storedToken.IsRevoked ||
-                storedToken.ExpiresAt < DateTime.UtcNow)
+            if (storedToken == null)
+            {
+                return Unauthorized(
+                    "Invalid or expired refresh token");
+            }
+
+            if (storedToken.IsRevoked)
+            {
+                // A token that was already exchanged for a new one is back. Either the client
+                // raced itself (harmless) or the token was copied, so end every session.
+                if (storedToken.RotatedAt != null &&
+                    storedToken.RotatedAt < DateTime.UtcNow.AddSeconds(-RotationGraceSeconds))
+                {
+                    var activeTokens = await _context.RefreshTokens
+                        .Where(rt => rt.UserId == storedToken.UserId && !rt.IsRevoked)
+                        .ToListAsync();
+
+                    foreach (var t in activeTokens)
+                    {
+                        t.IsRevoked = true;
+                    }
+
+                    await _context.SaveChangesAsync();
+                }
+
+                return Unauthorized(
+                    "Invalid or expired refresh token");
+            }
+
+            if (storedToken.ExpiresAt < DateTime.UtcNow)
             {
                 return Unauthorized(
                     "Invalid or expired refresh token");
@@ -270,9 +316,28 @@ namespace MunicipalReportingAPI.Controllers
                 roles,
                 _config);
 
+            // Rotation: the old refresh token is used up and replaced by a new one
+            var newRefreshTokenValue =
+                JWTHelper.GenerateRefreshToken();
+
+            storedToken.IsRevoked = true;
+            storedToken.RotatedAt = DateTime.UtcNow;
+
+            _context.RefreshTokens.Add(new RefreshToken
+            {
+                Token = newRefreshTokenValue,
+                UserId = user.Id,
+                ExpiresAt = DateTime.UtcNow.AddDays(
+                    double.Parse(
+                        _config["Jwt:RefreshTokenExpiresInDays"]!))
+            });
+
+            await _context.SaveChangesAsync();
+
             return Ok(new
             {
-                token = newAccessToken
+                token = newAccessToken,
+                refreshToken = newRefreshTokenValue
             });
         }
 
@@ -333,6 +398,13 @@ namespace MunicipalReportingAPI.Controllers
 
             var roles = await _userManager.GetRolesAsync(user);
 
+            // Registered/default location (null for Admin/Supervisor accounts without an Area)
+            var area = user.AreaId == null
+                ? null
+                : await _context.Areas
+                    .Include(a => a.Ward)
+                    .FirstOrDefaultAsync(a => a.Id == user.AreaId);
+
             return Ok(new
             {
                 id = user.Id,
@@ -340,7 +412,11 @@ namespace MunicipalReportingAPI.Controllers
                 email = user.Email,
                 role = roles.FirstOrDefault(),
                 profilePictureUrl = user.ProfilePictureUrl,
-                emailConfirmed = user.EmailConfirmed
+                emailConfirmed = user.EmailConfirmed,
+                areaId = user.AreaId,
+                areaName = area?.Name,
+                wardId = area?.WardId,
+                wardName = area?.Ward?.Name
             });
         }
 
@@ -473,7 +549,6 @@ namespace MunicipalReportingAPI.Controllers
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
 
-
             if (userIdClaim == null)
             {
                 return Unauthorized();
@@ -484,6 +559,12 @@ namespace MunicipalReportingAPI.Controllers
             if (user == null)
             {
                 return NotFound();
+            }
+
+            // Same rule as the admin route: an Admin account can never be removed through the API
+            if (await _userManager.IsInRoleAsync(user, "Admin"))
+            {
+                return BadRequest("Admin accounts cannot be deleted.");
             }
 
             var passwordValid = await _userManager.CheckPasswordAsync(user, dto.CurrentPassword);
@@ -498,42 +579,8 @@ namespace MunicipalReportingAPI.Controllers
                 return BadRequest("You must confirm account deletion");
             }
 
-            var reports = await _context.Reports
-                .Where(r => r.UserId == user.Id)
-                .ToListAsync();
-
-            foreach (var report in reports)
-            {
-                if (!string.IsNullOrEmpty(report.ImageUrl))
-                {
-                    var imagePath = Path.Combine(Directory.GetCurrentDirectory(),
-                        "wwwroot", report.ImageUrl.TrimStart('/'));
-
-                    if (System.IO.File.Exists(imagePath))
-                    {
-                        System.IO.File.Delete(imagePath);
-                    }
-                }
-            }
-
-            _context.Reports.RemoveRange(reports);
-            await _context.SaveChangesAsync();
-
-            if (!string.IsNullOrEmpty(user.ProfilePictureUrl))
-            {
-
-                var profilePicturePath = Path.Combine(
-                    Directory.GetCurrentDirectory(),
-                    "wwwroot",
-                    user.ProfilePictureUrl.TrimStart('/'));
-
-                if (System.IO.File.Exists(profilePicturePath))
-                {
-                    System.IO.File.Delete(profilePicturePath);
-                }
-            }
-
-            var result = await _userManager.DeleteAsync(user);
+            // Reports, issues, supervisor assignments and files are cleaned up in the shared service
+            var result = await _userDeletionService.DeleteUserAsync(user);
 
             if (!result.Succeeded)
             {

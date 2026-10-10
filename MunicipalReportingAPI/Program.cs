@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -6,6 +6,7 @@ using MunicipalReportingAPI.Data;
 using MunicipalReportingAPI.Models;
 using MunicipalReportingAPI.Services;
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -92,6 +93,17 @@ builder.Services
 // Email service
 builder.Services.AddScoped<IEmailService, EmailService>();
 
+// Shared account-deletion rules (used by self-service delete and by the admin)
+builder.Services.AddScoped<IUserDeletionService, UserDeletionService>();
+
+// Daily purge of expired revoked-token and refresh-token rows
+builder.Services.AddHostedService<TokenCleanupService>();
+
+// Issue grouping (radius comes from the "IssueGrouping" section in appsettings)
+builder.Services.Configure<MunicipalReportingAPI.Options.IssueGroupingOptions>(
+    builder.Configuration.GetSection(MunicipalReportingAPI.Options.IssueGroupingOptions.SectionName));
+builder.Services.AddScoped<IIssueService, IssueService>();
+
 // CORS
 builder.Services.AddCors(options =>
 {
@@ -153,20 +165,41 @@ builder.Services
         {
             OnTokenValidated = async context =>
             {
-                var jti = context.Principal?.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
-
-                if (jti != null)
-                {
-                    var dbContext = context.HttpContext.RequestServices
+                var dbContext = context.HttpContext.RequestServices
                     .GetRequiredService<MunicipalDBContext>();
 
-                    bool isRevoked = await dbContext.RevokedTokens
-                    .AnyAsync(rt => rt.Jti == jti);
+                // 1. Tokens revoked at logout are rejected
+                var jti = context.Principal?.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
 
-                    if (isRevoked)
-                    {
-                        context.Fail("Token has been removed");
-                    }
+                if (jti != null && await dbContext.RevokedTokens.AnyAsync(rt => rt.Jti == jti))
+                {
+                    context.Fail("Token has been removed");
+                    return;
+                }
+
+                // 2. The account must still exist, and the token must carry the user's current
+                //    security stamp. The stamp changes when an admin changes the user's role or
+                //    the password changes, so those sessions end immediately and the person has
+                //    to sign in again. (A deleted account has no stamp, so it is rejected too.)
+                var principal = context.Principal;
+                var userIdValue = principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                if (!int.TryParse(userIdValue, out var userId))
+                {
+                    context.Fail("Invalid token");
+                    return;
+                }
+
+                var currentStamp = await dbContext.Users
+                    .Where(u => u.Id == userId)
+                    .Select(u => u.SecurityStamp)
+                    .FirstOrDefaultAsync();
+
+                var tokenStamp = principal?.FindFirst("security_stamp")?.Value;
+
+                if (currentStamp == null || tokenStamp != currentStamp)
+                {
+                    context.Fail("Session is no longer valid");
                 }
             }
         };
@@ -201,6 +234,7 @@ app.UseAuthorization();
 app.MapControllers();
 
 await SeedRolesAsync(app);
+await SeedAdminAsync(app);
 
 app.Run();
 
@@ -229,4 +263,52 @@ static async Task SeedRolesAsync(WebApplication app)
                 new IdentityRole<int>(role));
         }
     }
+}
+
+
+// Creates the first Admin from configuration (user secrets), so there is always
+// someone who can use the admin endpoints. Does nothing when the settings are empty
+// or when an account with that email already exists (existing accounts are never changed).
+//   dotnet user-secrets set "SeedAdmin:Email" "admin@example.com"
+//   dotnet user-secrets set "SeedAdmin:Password" "YourStrongPassword1"
+//   dotnet user-secrets set "SeedAdmin:FullName" "System Admin"
+static async Task SeedAdminAsync(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+
+    var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+    var email = config["SeedAdmin:Email"];
+    var password = config["SeedAdmin:Password"];
+
+    if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+    {
+        return;
+    }
+
+    if (await userManager.FindByEmailAsync(email) != null)
+    {
+        return;
+    }
+
+    var admin = new ApplicationUser
+    {
+        FullName = config["SeedAdmin:FullName"] ?? "Administrator",
+        Email = email,
+        UserName = email,
+        EmailConfirmed = true
+    };
+
+    var result = await userManager.CreateAsync(admin, password);
+
+    if (!result.Succeeded)
+    {
+        logger.LogError("Could not seed the admin account: {Errors}",
+            string.Join("; ", result.Errors.Select(e => e.Description)));
+        return;
+    }
+
+    await userManager.AddToRoleAsync(admin, "Admin");
 }

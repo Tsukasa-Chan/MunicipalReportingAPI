@@ -155,6 +155,271 @@ namespace MunicipalReportingAPI.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("MunicipalReportingAPI.Models.Area", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<int>("WardId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WardId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Areas");
+
+                    b.HasData(
+                            new
+                            {
+                                Id = 1,
+                                Name = "Brake Village",
+                                WardId = 58
+                            },
+                            new
+                            {
+                                Id = 2,
+                                Name = "Canelands",
+                                WardId = 58
+                            },
+                            new
+                            {
+                                Id = 3,
+                                Name = "Casuarina",
+                                WardId = 58
+                            },
+                            new
+                            {
+                                Id = 4,
+                                Name = "Desainagar",
+                                WardId = 58
+                            },
+                            new
+                            {
+                                Id = 5,
+                                Name = "Ghandinagar",
+                                WardId = 58
+                            },
+                            new
+                            {
+                                Id = 6,
+                                Name = "Hammonds Farm",
+                                WardId = 58
+                            },
+                            new
+                            {
+                                Id = 7,
+                                Name = "King Shaka International Airport zone",
+                                WardId = 58
+                            },
+                            new
+                            {
+                                Id = 8,
+                                Name = "La Mercy",
+                                WardId = 58
+                            },
+                            new
+                            {
+                                Id = 9,
+                                Name = "Lungelani",
+                                WardId = 58
+                            },
+                            new
+                            {
+                                Id = 10,
+                                Name = "Pholani",
+                                WardId = 58
+                            },
+                            new
+                            {
+                                Id = 11,
+                                Name = "Sastri Circle / Belgate",
+                                WardId = 58
+                            },
+                            new
+                            {
+                                Id = 12,
+                                Name = "Thuthukani",
+                                WardId = 58
+                            },
+                            new
+                            {
+                                Id = 13,
+                                Name = "Tongaat Beach / Westbrook",
+                                WardId = 58
+                            },
+                            new
+                            {
+                                Id = 14,
+                                Name = "Belvedere (including Belvedere North)",
+                                WardId = 61
+                            },
+                            new
+                            {
+                                Id = 15,
+                                Name = "Buffelsdale",
+                                WardId = 61
+                            },
+                            new
+                            {
+                                Id = 16,
+                                Name = "Chelmsford Heights",
+                                WardId = 61
+                            },
+                            new
+                            {
+                                Id = 17,
+                                Name = "Emona Sunhill",
+                                WardId = 61
+                            },
+                            new
+                            {
+                                Id = 18,
+                                Name = "Gwalas Farm",
+                                WardId = 61
+                            },
+                            new
+                            {
+                                Id = 19,
+                                Name = "Mithangar",
+                                WardId = 61
+                            },
+                            new
+                            {
+                                Id = 20,
+                                Name = "Plain Street",
+                                WardId = 61
+                            },
+                            new
+                            {
+                                Id = 21,
+                                Name = "Sandfields",
+                                WardId = 61
+                            },
+                            new
+                            {
+                                Id = 22,
+                                Name = "Umbhayi",
+                                WardId = 61
+                            },
+                            new
+                            {
+                                Id = 23,
+                                Name = "Watsonia",
+                                WardId = 61
+                            },
+                            new
+                            {
+                                Id = 24,
+                                Name = "Burbreeze",
+                                WardId = 62
+                            },
+                            new
+                            {
+                                Id = 25,
+                                Name = "Fairbreeze",
+                                WardId = 62
+                            },
+                            new
+                            {
+                                Id = 26,
+                                Name = "Flamingo Heights",
+                                WardId = 62
+                            },
+                            new
+                            {
+                                Id = 27,
+                                Name = "Gandhi’s Hill",
+                                WardId = 62
+                            },
+                            new
+                            {
+                                Id = 28,
+                                Name = "Hambanathi",
+                                WardId = 62
+                            },
+                            new
+                            {
+                                Id = 29,
+                                Name = "Lauriston",
+                                WardId = 62
+                            },
+                            new
+                            {
+                                Id = 30,
+                                Name = "Magwaveni",
+                                WardId = 62
+                            },
+                            new
+                            {
+                                Id = 31,
+                                Name = "Maidstone Village",
+                                WardId = 62
+                            },
+                            new
+                            {
+                                Id = 32,
+                                Name = "OThongathi CBD / Tongaat Central",
+                                WardId = 62
+                            },
+                            new
+                            {
+                                Id = 33,
+                                Name = "Riverside AH",
+                                WardId = 62
+                            },
+                            new
+                            {
+                                Id = 34,
+                                Name = "Tongaat Industrial / Trurolands",
+                                WardId = 62
+                            },
+                            new
+                            {
+                                Id = 35,
+                                Name = "Vanrova",
+                                WardId = 62
+                            });
+                });
+
+            modelBuilder.Entity("MunicipalReportingAPI.Models.Ward", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Wards");
+
+                    b.HasData(
+                            new
+                            {
+                                Id = 58,
+                                Name = "Ward 58"
+                            },
+                            new
+                            {
+                                Id = 61,
+                                Name = "Ward 61"
+                            },
+                            new
+                            {
+                                Id = 62,
+                                Name = "Ward 62"
+                            });
+                });
+
             modelBuilder.Entity("MunicipalReportingAPI.Models.ApplicationUser", b =>
                 {
                     b.Property<int>("Id")
@@ -164,6 +429,9 @@ namespace MunicipalReportingAPI.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int>("AccessFailedCount")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("AreaId")
                         .HasColumnType("int");
 
                     b.Property<string>("ConcurrencyStamp")
@@ -219,6 +487,8 @@ namespace MunicipalReportingAPI.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AreaId");
+
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
 
@@ -230,7 +500,7 @@ namespace MunicipalReportingAPI.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("MunicipalReportingAPI.Models.RefreshToken", b =>
+            modelBuilder.Entity("MunicipalReportingAPI.Models.Issue", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -238,45 +508,11 @@ namespace MunicipalReportingAPI.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsRevoked")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("UserId")
+                    b.Property<int>("AreaId")
                         .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("RefreshTokens");
-                });
-
-            modelBuilder.Entity("MunicipalReportingAPI.Models.Report", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ImageUrl")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("IssueCategory")
                         .HasColumnType("int");
@@ -297,15 +533,117 @@ namespace MunicipalReportingAPI.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<int?>("SupervisorId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AreaId");
+
+                    b.HasIndex("SupervisorId");
+
+                    b.HasIndex("IssueType", "Status");
+
+                    b.HasIndex("IssueType", "AreaId", "Status");
+
+                    b.ToTable("Issues");
+                });
+
+            modelBuilder.Entity("MunicipalReportingAPI.Models.RefreshToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsRevoked")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("RotatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Token")
+                        .IsUnique();
+
                     b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens");
+                });
+
+            modelBuilder.Entity("MunicipalReportingAPI.Models.Report", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AreaId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("IssueCategory")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IssueId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IssueType")
+                        .HasColumnType("int");
+
+                    b.Property<double>("Latitude")
+                        .HasColumnType("float");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<double>("Longitude")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AreaId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("IssueId", "UserId")
+                        .IsUnique()
+                        .HasFilter("[UserId] IS NOT NULL");
 
                     b.ToTable("Reports");
                 });
@@ -323,9 +661,12 @@ namespace MunicipalReportingAPI.Migrations
 
                     b.Property<string>("Jti")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Jti");
 
                     b.ToTable("RevokedTokens");
                 });
@@ -381,6 +722,27 @@ namespace MunicipalReportingAPI.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("MunicipalReportingAPI.Models.ApplicationUser", b =>
+                {
+                    b.HasOne("MunicipalReportingAPI.Models.Area", "Area")
+                        .WithMany("Users")
+                        .HasForeignKey("AreaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Area");
+                });
+
+            modelBuilder.Entity("MunicipalReportingAPI.Models.Area", b =>
+                {
+                    b.HasOne("MunicipalReportingAPI.Models.Ward", "Ward")
+                        .WithMany("Areas")
+                        .HasForeignKey("WardId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Ward");
+                });
+
             modelBuilder.Entity("MunicipalReportingAPI.Models.RefreshToken", b =>
                 {
                     b.HasOne("MunicipalReportingAPI.Models.ApplicationUser", "User")
@@ -392,15 +754,67 @@ namespace MunicipalReportingAPI.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("MunicipalReportingAPI.Models.Report", b =>
+            modelBuilder.Entity("MunicipalReportingAPI.Models.Issue", b =>
                 {
-                    b.HasOne("MunicipalReportingAPI.Models.ApplicationUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
+                    b.HasOne("MunicipalReportingAPI.Models.Area", "Area")
+                        .WithMany("Issues")
+                        .HasForeignKey("AreaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("MunicipalReportingAPI.Models.ApplicationUser", "Supervisor")
+                        .WithMany()
+                        .HasForeignKey("SupervisorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Area");
+
+                    b.Navigation("Supervisor");
+                });
+
+            modelBuilder.Entity("MunicipalReportingAPI.Models.Report", b =>
+                {
+                    b.HasOne("MunicipalReportingAPI.Models.Area", "Area")
+                        .WithMany("Reports")
+                        .HasForeignKey("AreaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MunicipalReportingAPI.Models.Issue", "Issue")
+                        .WithMany("Reports")
+                        .HasForeignKey("IssueId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MunicipalReportingAPI.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Area");
+
+                    b.Navigation("Issue");
+
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MunicipalReportingAPI.Models.Area", b =>
+                {
+                    b.Navigation("Issues");
+
+                    b.Navigation("Reports");
+
+                    b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("MunicipalReportingAPI.Models.Issue", b =>
+                {
+                    b.Navigation("Reports");
+                });
+
+            modelBuilder.Entity("MunicipalReportingAPI.Models.Ward", b =>
+                {
+                    b.Navigation("Areas");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,6 +1,7 @@
 # Build output
 [Bb]in/
 [Oo]bj/
+**/build/
 
 # Visual Studio cache/options
 .vs/
@@ -25,3 +26,28 @@
 **/wwwroot/profile-pictures/*
 !**/wwwroot/uploads/.gitkeep
 !**/wwwroot/profile-pictures/.gitkeep
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+**/android/.gradle/
+**/android/.kotlin/
+**/android/local.properties
+**/android/app/debug
+**/android/app/profile
+**/android/app/release
+**/ios/Flutter/.last_build_id
+**/ios/Pods/
+
+# Editors
+.idea/
+.vscode/
+*.iml
+
+# Secrets / local config
+.env
+*.pubxml.user

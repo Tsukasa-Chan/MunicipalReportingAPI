@@ -29,7 +29,13 @@ namespace MunicipalReportingAPI.Helpers
                     user.UserName ?? user.Email ?? string.Empty),
                 new Claim(
                     JwtRegisteredClaimNames.Jti,
-                    Guid.NewGuid().ToString())
+                    Guid.NewGuid().ToString()),
+
+                // Changes whenever the user's sessions must end (role change, password
+                // change/reset). A token whose stamp no longer matches is rejected.
+                new Claim(
+                    "security_stamp",
+                    user.SecurityStamp ?? string.Empty)
             };
 
             foreach (var role in roles)
