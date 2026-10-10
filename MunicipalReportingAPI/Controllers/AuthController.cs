@@ -203,8 +203,12 @@ namespace MunicipalReportingAPI.Controllers
 
             if (!user.EmailConfirmed)
             {
-                return Unauthorized(
-                    "Please verify your email address before logging in.");
+                // The code lets the app offer a "resend confirmation" option
+                return Unauthorized(new
+                {
+                    code = "email_not_verified",
+                    message = "Please verify your email address before logging in."
+                });
             }
 
             var result = await _signInManager.CheckPasswordSignInAsync(
