@@ -125,15 +125,24 @@ namespace MunicipalReportingAPI.Controllers
 
         [HttpGet("confirm-email")]
         public async Task<IActionResult> ConfirmEmail(
-            [FromQuery] int userId,
-            [FromQuery] string token)
+    [FromQuery] int userId,
+    [FromQuery] string token)
         {
+            // The link in the email opens in a browser, so send the person to a
+            // proper page instead of showing plain text.
             var user = await _userManager.FindByIdAsync(
                 userId.ToString());
 
             if (user == null)
             {
-                return NotFound("User not found");
+                return LocalRedirect("/email-confirmed.html?status=invalid");
+            }
+
+            // Clicking the link a second time: the token was already used,
+            // but the account is fine.
+            if (user.EmailConfirmed)
+            {
+                return LocalRedirect("/email-confirmed.html?status=already");
             }
 
             var result = await _userManager.ConfirmEmailAsync(
@@ -142,10 +151,10 @@ namespace MunicipalReportingAPI.Controllers
 
             if (!result.Succeeded)
             {
-                return BadRequest("Invalid or expired confirmation link");
+                return LocalRedirect("/email-confirmed.html?status=invalid");
             }
 
-            return Ok("Email verified successfully. You can now log in.");
+            return LocalRedirect("/email-confirmed.html?status=success");
         }
 
         [HttpPost("resend-confirmation")]
