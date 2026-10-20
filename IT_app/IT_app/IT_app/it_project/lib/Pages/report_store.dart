@@ -436,8 +436,8 @@ class ReportStore {
       description: description.trim(),
       pinLocation: pinLocation.trim(),
       locationAddress: locationAddress.trim(),
-      storageType: 'offline',
-      syncStatus: 'Queued offline',
+      storageType: isOfflineSubmission ? 'offline' : 'online',  // changed
+      syncStatus: isOfflineSubmission ? 'Queued offline' : 'Pending submission', // changed
       queuedAt: DateTime.now(),
       createdAt: DateTime.now(),
       submittedAt: null,
@@ -537,6 +537,19 @@ class ReportStore {
     }
     _save();
   }
+
+  // Mark a report as submitted and save its updated status.
+  static Future<void> markReportSubmitted(
+      ReportRequest report,
+      ) async {
+    if (!_reports.contains(report)) return;
+
+    report.storageType = 'online';
+    report.markSubmitted();
+
+    await _save();
+  }
+
 
   static Future<void> _save() async {
     final preferences = _preferences;
