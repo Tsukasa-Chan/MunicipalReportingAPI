@@ -1,0 +1,190 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Email verification - Municipal Reporting</title>
+    <style>
+        :root {
+            --bg: #fff4ee;
+            --card: #ffffff;
+            --text: #2b2b2b;
+            --muted: #6b6b6b;
+            --accent: #e8541a;
+            --border: #e2d6cf;
+            --ok: #2e8b3d;
+            --ok-bg: #e8f5e9;
+            --info: #e8541a;
+            --info-bg: #fff0e8;
+            --error: #c0392b;
+            --error-bg: #fdecea;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1e1a18;
+                --card: #2a2522;
+                --text: #f1ebe7;
+                --muted: #b5aaa3;
+                --border: #4a403b;
+                --ok: #7fd18b;
+                --ok-bg: #1f3a25;
+                --info: #ff9a6b;
+                --info-bg: #3d2a20;
+                --error: #ff8f84;
+                --error-bg: #4a2220;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 420px;
+            background: var(--card);
+            border-radius: 16px;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+            overflow: hidden;
+        }
+
+        .header {
+            background: var(--accent);
+            color: #fff;
+            padding: 20px 24px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .body {
+            padding: 32px 24px 28px;
+            text-align: center;
+        }
+
+        .icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+
+            .icon svg {
+                width: 38px;
+                height: 38px;
+                fill: none;
+                stroke: currentColor;
+                stroke-width: 3;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+            }
+
+            .icon.ok {
+                background: var(--ok-bg);
+                color: var(--ok);
+            }
+
+            .icon.info {
+                background: var(--info-bg);
+                color: var(--info);
+            }
+
+            .icon.error {
+                background: var(--error-bg);
+                color: var(--error);
+            }
+
+        h1 {
+            font-size: 22px;
+            margin: 0 0 10px;
+        }
+
+        p {
+            margin: 0 0 16px;
+            color: var(--muted);
+            font-size: 15px;
+            line-height: 1.55;
+        }
+
+        .steps {
+            text-align: left;
+            margin: 20px 0 4px;
+            padding: 16px 18px 16px 36px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="header">Municipal Reporting</div>
+        <div class="body">
+
+            <div id="success" hidden>
+                <div class="icon ok">
+                    <svg viewBox="0 0 24 24"><polyline points="5 12.5 10 17.5 19 7.5"></polyline></svg>
+                </div>
+                <h1>Email verified</h1>
+                <p>Thank you. Your account is now ready to use.</p>
+                <ol class="steps">
+                    <li>Open the Municipal Reporting app</li>
+                    <li>Log in with your email and password</li>
+                </ol>
+            </div>
+
+            <div id="already" hidden>
+                <div class="icon info">
+                    <svg viewBox="0 0 24 24">
+                        <line x1="12" y1="11" x2="12" y2="17"></line>
+                        <line x1="12" y1="7" x2="12" y2="7.5"></line>
+                    </svg>
+                </div>
+                <h1>Already verified</h1>
+                <p>This email address has already been verified. You can go back to the app and log in.</p>
+            </div>
+
+            <div id="invalid" hidden>
+                <div class="icon error">
+                    <svg viewBox="0 0 24 24">
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                    </svg>
+                </div>
+                <h1>Link not valid</h1>
+                <p>This verification link is invalid or has expired. Open the app, try to log in, and choose "Resend confirmation email" to get a new link.</p>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            var status = new URLSearchParams(window.location.search).get("status");
+            var known = { success: true, already: true, invalid: true };
+            var show = known[status] ? status : "invalid";
+            document.getElementById(show).hidden = false;
+        })();
+    </script>
+</body>
+</html>
