@@ -1,10 +1,12 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MunicipalReportingAPI.Data;
 using MunicipalReportingAPI.Models;
 using MunicipalReportingAPI.Services;
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -208,6 +210,18 @@ builder.Services
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+// Always parse form values (e.g. latitude/longitude in multipart requests) with the
+// invariant culture, so "." is the decimal separator regardless of the server's
+// regional settings (en-ZA uses a comma).
+var invariantCultures = new[] { CultureInfo.InvariantCulture };
+
+app.UseRequestLocalization(new RequestLocalizationOptions
+{
+    DefaultRequestCulture = new RequestCulture(CultureInfo.InvariantCulture),
+    SupportedCultures = invariantCultures,
+    SupportedUICultures = invariantCultures
+});
 
 // Swagger
 if (app.Environment.IsDevelopment())
