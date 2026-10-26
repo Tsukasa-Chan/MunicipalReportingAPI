@@ -72,6 +72,15 @@ this Flutter project. The app currently keeps verified accounts in the
 in-memory `AuthStore`, so server-backed login/session persistence still needs
 to be integrated separately.
 
+## Supervisor issue status (implemented)
+
+The backend returns the signed-in supervisor's assigned issues from
+`GET /api/issues/mine`. Supervisors can change an assigned issue with
+`PUT /api/issues/{issueId}/status`, sending `{"status":"InProgress"}`.
+Allowed values are `Reported`, `InProgress`, and `Resolved`. The status is
+stored on the shared issue, so every resident report linked to that issue
+shows the same status. The API checks the signed-in role and assignment before
+saving the update.
 ## Assign a report to a supervisor
 
 `PUT /api/reports/{reportId}/assignment`

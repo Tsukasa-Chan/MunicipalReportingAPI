@@ -439,6 +439,39 @@ class AuthApi {
     return _decodeJsonObject(response);
   }
 
+  // Supervisor issue workflow: the backend scopes /mine from the JWT identity.
+  Future<List<Map<String, dynamic>>> getMyAssignedIssues({
+    required String accessToken,
+  }) async {
+    final response = await _send(
+      () => _client.get(
+        _endpoint('/api/Issues/mine'),
+        headers: _headers(accessToken: accessToken),
+      ),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _exceptionFromResponse(response);
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is! List) {
+      throw const AuthApiException('The server returned an unexpected issue list.');
+    }
+    return decoded.map((item) {
+      if (item is Map<String, dynamic>) return item;
+      if (item is Map) return Map<String, dynamic>.from(item);
+      throw const AuthApiException('The server returned an invalid issue.');
+    }).toList();
+  }
+
+  Future<Map<String, dynamic>> updateIssueStatus({
+    required String accessToken,
+    required int issueId,
+    required String status,
+  }) => _putJson(
+    '/api/Issues/$issueId/status',
+    {'status': status},
+    accessToken: accessToken,
+  );
   Map<String, String> _headers({
     String? accessToken,
   }) {

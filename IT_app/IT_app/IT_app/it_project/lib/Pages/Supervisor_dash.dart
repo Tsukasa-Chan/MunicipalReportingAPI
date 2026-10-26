@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'SupervisorSchedule.dart';
+import 'Supervisor_reports_api.dart';
 import 'Supervisor_theme.dart';
 import 'auth_store.dart';
 import 'ContactUs.dart';
@@ -205,6 +206,15 @@ class _SupervisorOverviewState extends State<_SupervisorOverview> {
           ),
           const SizedBox(height: 8),
           const Text('Monitor incoming reports and field activity.'),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SupervisorReportsApiPage()),
+            ),
+            icon: const Icon(Icons.assignment_outlined),
+            label: const Text('View assigned reports and update status'),
+          ),
           const SizedBox(height: 16),
           _ScheduleCard(
             now: _now,

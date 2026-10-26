@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -57,6 +57,18 @@ namespace MunicipalReportingAPI.Controllers
                     .Select(r => r.ImageUrl).FirstOrDefault()
             });
 
+        // Return only the issues assigned to the signed-in supervisor.
+        [Authorize(Roles = "Admin,Supervisor")]
+        [HttpGet("mine")]
+        public async Task<IActionResult> GetMyIssues()
+        {
+            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            var issues = await ProjectIssues(
+                    _context.Issues.Where(i => i.SupervisorId == currentUserId)
+                        .OrderByDescending(i => i.CreatedAt))
+                .ToListAsync();
+            return Ok(issues);
+        }
         // Public list / map data: one entry per municipal problem
         [HttpGet]
         public async Task<IActionResult> GetAll(
