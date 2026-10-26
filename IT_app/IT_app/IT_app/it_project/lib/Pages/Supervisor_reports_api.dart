@@ -12,7 +12,7 @@ class SupervisorReportsApiPage extends StatefulWidget {
 class _SupervisorReportsApiPageState extends State<SupervisorReportsApiPage> {
   late Future<List<Map<String, dynamic>>> _issues;
 
-  @override
+  @overrides
   void initState() {
     super.initState();
     _issues = _load();
