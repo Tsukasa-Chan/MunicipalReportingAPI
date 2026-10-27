@@ -11,6 +11,8 @@ import 'report_store.dart';
 import 'Settings.dart';
 import 'StartUp.dart';
 
+// displays the supervisor dashboard and navigation menu.
+
 class SupervisorDashboardPage extends StatefulWidget {
   const SupervisorDashboardPage({super.key});
 
@@ -22,6 +24,7 @@ class SupervisorDashboardPage extends StatefulWidget {
 class _SupervisorDashboardPageState extends State<SupervisorDashboardPage> {
   int _selectedIndex = 0;
 
+  // stores the pages and their titles.
   static const _pages = [
     _SupervisorOverview(),
     ContactPage(),
@@ -66,7 +69,7 @@ class _SupervisorDashboardPageState extends State<SupervisorDashboardPage> {
               UserAccountsDrawerHeader(
                 accountName: Text(
                   '${supervisor?.name ?? 'Supervisor'} '
-                          '${supervisor?.surname ?? ''}'
+                      '${supervisor?.surname ?? ''}'
                       .trim(),
                 ),
                 accountEmail: Text(supervisor?.email ?? 'Supervisor'),
@@ -94,6 +97,7 @@ class _SupervisorDashboardPageState extends State<SupervisorDashboardPage> {
     );
   }
 
+  // handles menu navigation.
   Widget _menuItem(int index, IconData icon, String label) {
     return ListTile(
       selected: _selectedIndex == index,
@@ -115,15 +119,18 @@ class _SupervisorDashboardPageState extends State<SupervisorDashboardPage> {
     );
   }
 
+  // logs out the supervisor and returns to the startup page.
   void _logout() {
     AuthStore.logout();
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => const StartupPage()),
-      (_) => false,
+          (_) => false,
     );
   }
 }
+
+// displays report statistics and the daily schedule.
 
 class _SupervisorOverview extends StatefulWidget {
   const _SupervisorOverview();
@@ -136,6 +143,7 @@ class _SupervisorOverviewState extends State<_SupervisorOverview> {
   DateTime _now = DateTime.now();
   Timer? _clockTimer;
 
+  // updates the displayed time every 30 seconds.
   @override
   void initState() {
     super.initState();
@@ -155,28 +163,34 @@ class _SupervisorOverviewState extends State<_SupervisorOverview> {
   @override
   Widget build(BuildContext context) {
     final supervisor = AuthStore.currentUser;
+
+    // filters reports according to the supervisor's responsibilities.
     final reports = ReportStore.reports
         .where(
           (report) =>
-              supervisor == null ||
-              AuthStore.canSuperviseIssue(
-                supervisorUsername: supervisor.username,
-                issueType: report.issueType,
-              ),
-        )
+      supervisor == null ||
+          AuthStore.canSuperviseIssue(
+            supervisorUsername: supervisor.username,
+            issueType: report.issueType,
+          ),
+    )
         .toList();
+
     final todayJobs = ReportStore.reportsForSupervisorOnDate(
       supervisorUsername: supervisor?.username ?? '',
       date: _now,
     );
     final todayJobCount = ReportStore.groupReports(todayJobs).length;
     final today = DateTime.now();
+
+    // calculates the report totals for the dashboard.
     final dailyReports = reports.where((report) {
       final createdAt = report.createdAt.toLocal();
       return createdAt.year == today.year &&
           createdAt.month == today.month &&
           createdAt.day == today.day;
     }).length;
+
     final pending = reports
         .where((report) => report.status == 'Pending')
         .length;
@@ -187,9 +201,10 @@ class _SupervisorOverviewState extends State<_SupervisorOverview> {
     final finished = reports
         .where(
           (report) =>
-              report.status == 'Completed' || report.status == 'Finished',
-        )
+      report.status == 'Completed' || report.status == 'Finished',
+    )
         .length;
+
     return Container(
       decoration: pageBackgroundDecoration(isSupervisor: true),
       child: ListView(
@@ -261,6 +276,7 @@ class _SupervisorOverviewState extends State<_SupervisorOverview> {
     );
   }
 
+  // displays reports in a popup.
   void _showReports(BuildContext context, List<ReportRequest> reports) {
     final groupedReports = ReportStore.groupReports(reports);
     showDialog<void>(
@@ -274,29 +290,29 @@ class _SupervisorOverviewState extends State<_SupervisorOverview> {
           child: groupedReports.isEmpty
               ? const Text('No reports found for this report type.')
               : ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: groupedReports.length,
-                  separatorBuilder: (_, _) => const Divider(),
-                  itemBuilder: (context, index) {
-                    final group = groupedReports[index];
-                    final report = group.firstReport;
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        'Report #${report.id}: ${report.issueType} - ${report.issue}',
-                      ),
-                      subtitle: Text(
-                        'Reported by ${group.reporterCount} '
-                        '${group.reporterCount == 1 ? 'person' : 'people'} '
-                        '(first: ${report.senderName})\n'
-                        'Date: ${report.createdAt.toLocal()}\n'
-                        'Area: ${report.area} • Status: ${report.status}'
-                        '${report.description.isEmpty ? '' : '\n${report.description}'}',
-                      ),
-                      isThreeLine: true,
-                    );
-                  },
+            shrinkWrap: true,
+            itemCount: groupedReports.length,
+            separatorBuilder: (_, _) => const Divider(),
+            itemBuilder: (context, index) {
+              final group = groupedReports[index];
+              final report = group.firstReport;
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  'Report #${report.id}: ${report.issueType} - ${report.issue}',
                 ),
+                subtitle: Text(
+                  'Reported by ${group.reporterCount} '
+                      '${group.reporterCount == 1 ? 'person' : 'people'} '
+                      '(first: ${report.senderName})\n'
+                      'Date: ${report.createdAt.toLocal()}\n'
+                      'Area: ${report.area} • Status: ${report.status}'
+                      '${report.description.isEmpty ? '' : '\n${report.description}'}',
+                ),
+                isThreeLine: true,
+              );
+            },
+          ),
         ),
         actions: [
           TextButton(
@@ -308,6 +324,8 @@ class _SupervisorOverviewState extends State<_SupervisorOverview> {
     );
   }
 }
+
+// displays the date, time, and allocated jobs.
 
 class _ScheduleCard extends StatelessWidget {
   const _ScheduleCard({
@@ -368,6 +386,8 @@ class _ScheduleCard extends StatelessWidget {
     );
   }
 }
+
+// displays the number of reports received today.
 
 class _DailyReportsBubble extends StatelessWidget {
   const _DailyReportsBubble({
@@ -430,6 +450,8 @@ class _DailyReportsBubble extends StatelessWidget {
     );
   }
 }
+
+// displays a report statistic.
 
 class _StatCard extends StatelessWidget {
   const _StatCard({

@@ -14,8 +14,6 @@ import 'auth_store.dart';
 import 'Supervisor_theme.dart';
 import 'report_store.dart';
 
-import 'auth_api.dart'; // added
-
 class ReportingPage extends StatefulWidget {
   const ReportingPage({super.key});
 
@@ -544,237 +542,39 @@ class _ReportingPageState extends State<ReportingPage> {
     }
   }
 
-  // Convert the selected area into the backend's AreaId.
-  int? _getSelectedAreaId() {
-    if (selectedWard == null || selectedCommunityArea == null) {
-      return null;
-    }
-
-    // Area names and IDs from LocationSeedData.cs.
-    const areaIds = <String, int>{
-      // Ward 58
-      'Brake Village': 1,
-      'Canelands': 2,
-      'Casuarina': 3,
-      'Desainagar': 4,
-      'Ghandinagar': 5,
-      'Hammonds Farm': 6,
-      'King Shaka International Airport zone': 7,
-      'La Mercy': 8,
-      'Lungelani': 9,
-      'Pholani': 10,
-      'Sastri Circle / Belgate': 11,
-      'Thuthukani': 12,
-      'Tongaat Beach / Westbrook': 13,
-
-      // Ward 61
-      'Belvedere (including Belvedere North)': 14, //Changed
-      'Buffelsdale': 15,
-      'Chelmsford Heights': 16,
-      'Emona Sunhill': 17,
-      'Gwalas Farm': 18,
-      'Mithangar': 19,
-      'Plain Street': 20,
-      'Sandfields': 21,
-      'Umbhayi': 22,
-      'Watsonia': 23,
-
-      // Ward 62
-      'Burbreeze': 24,
-      'Fairbreeze': 25,
-      'Flamingo Heights': 26,
-      'Gandhi’s Hill': 27,
-      'Hambanathi': 28,
-      'Lauriston': 29,
-      'Magwaveni': 30, // Changed
-      'Maidstone Village': 31,
-      'OThongathi CBD / Tongaat Central': 32,
-      'Riverside AH': 33,
-      'Tongaat Industrial / Trurolands': 34,
-      'Vanrova': 35,
-    };
-
-    return areaIds[selectedCommunityArea];
-  }
-
-  // Convert the selected category to the backend enum name.
-  String _getBackendIssueCategory() {
-    switch (selectedIssueType) {
-      case 'Water and Sanitation':
-        return 'WaterAndSanitation';
-      case 'Roads and Stormwater':
-        return 'RoadsAndStormwater';
-      case 'Electricity':
-        return 'Electricity';
-      case 'Waste Management':
-        return 'WasteManagement';
-      default:
-        throw StateError('No valid issue category selected.');
-    }
-  }
-
-
-  // Convert the selected issue to the backend enum name.
-  String _getBackendIssueType() {
-    switch (selectedIssue) {
-      case 'Burst Pipe':
-        return 'BurstPipe';
-      case 'Leaking Pipe':
-        return 'LeakingPipe';
-      case 'No Water Supply':
-        return 'NoWaterSupply';
-      case 'Low Water Pressure':
-        return 'LowWaterPressure';
-      case 'Blocked Sewer or Manhole':
-        return 'BlockedSewerOrManhole';
-      case 'Sewage Spill':
-        return 'SewageSpill';
-      case 'Discolored or Dirty Water':
-        return 'DiscoloredOrDirtyWater';
-      case 'Pothole':
-        return 'Pothole';
-      case 'Sinkhole':
-        return 'Sinkhole';
-      case 'Blocked Storm Drain':
-        return 'BlockedStormDrain';
-      case 'Flooded Road':
-        return 'FloodedRoad';
-      case 'Traffic Light Not Working':
-        return 'TrafficLightNotWorking';
-      case 'Missing or Damaged Road Sign':
-        return 'MissingOrDamagedRoadSign';
-      case 'Faded Road Markings':
-        return 'FadedRoadMarkings';
-      case 'Street Light Not Working':
-        return 'StreetLightNotWorking';
-      case 'Street Light On During Day':
-        return 'StreetLightOnDuringDay';
-      case 'Power Outage':
-        return 'PowerOutage';
-      case 'Exposed Or Damaged Cable':
-        return 'ExposedOrDamagedCable';
-      case 'Damaged Electrical Box':
-        return 'DamagedElectricalBox';
-      case 'Missed Bin Collection':
-        return 'MissedBinCollection';
-      case 'Illegal Dumping':
-        return 'IllegalDumping';
-      case 'Overflowing Public Bin':
-        return 'OverflowingPublicBin';
-      default:
-        throw StateError('No valid issue type selected.');
-    }
-  }
-
-
-  // Read the selected map coordinates for the backend request.
-  LatLng? _getSelectedCoordinates() {
-    return _parseCoordinates(pinLocationController.text);
-  }
-
-
   // Submit the report
   Future<void> _submit() async {
     if (!formKey.currentState!.validate()) return;
 
-    final areaId = _getSelectedAreaId();
-    if (areaId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a valid community area.'),
-        ),
-      );
-      return;
-    }
+    final report = ReportStore.addReport(
+      issueType: selectedIssueType!,
+      issue: selectedIssue!,
+      area: 'Ward $selectedWard - $selectedCommunityArea',
+      description: additionalInfoController.text,
+      pinLocation: pinLocationController.text,
+      locationAddress: locationController.text,
+      imagePath: selectedImage?.path ?? '',
+      isOfflineSubmission: !ReportStore.isOnline,
+    );
 
-    final coordinates = _getSelectedCoordinates();
-    if (coordinates == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Please select a point on the map or use your current location.',
-          ),
-        ),
-      );
-      return;
-    }
+    if (report == null) return;
+    if (!mounted) return;
 
-    final location = locationController.text.trim();
+    final message = report.storageType == 'offline'
+        ? 'Report saved offline. It will sync when the internet is available.'
+        : 'Report logged and sent successfully.';
 
-    try {
-      await AuthStore.withAccessToken(
-            (api, accessToken) => api.createReport(
-          accessToken: accessToken,
-          issueCategory: _getBackendIssueCategory(),
-          issueType: _getBackendIssueType(),
-          areaId: areaId,
-          location: location,
-          latitude: coordinates.latitude,
-          longitude: coordinates.longitude,
-          description: additionalInfoController.text.trim(),
-          imagePath: selectedImage?.path,
-        ),
-      );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
 
-      final report = ReportStore.addReport(
-        issueType: selectedIssueType!,
-        issue: selectedIssue!,
-        area: 'Ward $selectedWard - $selectedCommunityArea',
-        description: additionalInfoController.text,
-        pinLocation: pinLocationController.text,
-        locationAddress: locationController.text,
-        imagePath: selectedImage?.path ?? '',
-        isOfflineSubmission: false,
-      );
-
-      if (report == null) {
-        if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('The report was sent, but could not be saved locally.'),
-          ),
-        );
-        return;
-      }
-
-      await ReportStore.markReportSubmitted(report);
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Report submitted successfully.'),
-        ),
-      );
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const StatusPage(),
-        ),
-      );
-    } on AuthApiException catch (error) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.message),
-        ),
-      );
-    } catch (error) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Could not submit the report. Please check your connection and try again.',
-          ),
-        ),
-      );
-    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const StatusPage(),
+      ),
+    );
   }
-
 
   @override
   void dispose() {
