@@ -17,7 +17,12 @@ import 'report_store.dart';
 import 'auth_api.dart'; // added
 
 class ReportingPage extends StatefulWidget {
-  const ReportingPage({super.key});
+  const ReportingPage({
+    super.key,
+    this.reportToEdit,
+  });
+
+  final ReportRequest? reportToEdit;
 
   @override
   State<ReportingPage> createState() => _ReportingPageState();
@@ -95,6 +100,39 @@ class _ReportingPageState extends State<ReportingPage> {
   @override
   void initState() {
     super.initState();
+
+    final report = widget.reportToEdit;
+
+    if (report != null) {
+      // Load the existing report details into the form.
+      selectedIssueType = issueTypes.contains(report.issueType)
+          ? report.issueType
+          : null;
+
+      selectedIssue = report.issue;
+
+      locationController.text = report.locationAddress;
+      pinLocationController.text = report.pinLocation;
+      additionalInfoController.text = report.description;
+
+      // Restore the ward and area from the saved area description.
+      final match = RegExp(
+        r'^Ward\s+(\d+)\s*-\s*(.+)$',
+      ).firstMatch(report.area);
+
+      if (match != null) {
+        final ward = int.tryParse(match.group(1)!);
+        final area = match.group(2)!.trim();
+
+        if (ward != null &&
+            AuthStore.wardAreas.containsKey(ward) &&
+            (AuthStore.wardAreas[ward] ?? []).contains(area)) {
+          selectedWard = ward;
+          selectedCommunityArea = area;
+        }
+      }
+    }
+
     _refreshLocationPermissionState();
   }
 
@@ -148,8 +186,10 @@ class _ReportingPageState extends State<ReportingPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
-                    'Submit a Report',
+                  Text(
+                    widget.reportToEdit == null
+                        ? 'Submit a Report'
+                        : 'Edit Report',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 26,
@@ -394,7 +434,11 @@ class _ReportingPageState extends State<ReportingPage> {
                           style: ElevatedButton.styleFrom(
                             minimumSize: const Size.fromHeight(52),
                           ),
-                          child: const Text('Submit'),
+                          child: Text(
+                            widget.reportToEdit == null
+                                ? 'Submit'
+                                : 'Save Changes',
+                          ),
                         ),
                       ),
                     ],
@@ -674,6 +718,7 @@ class _ReportingPageState extends State<ReportingPage> {
 
 
   // Submit the report
+
   Future<void> _submit() async {
     if (!formKey.currentState!.validate()) return;
 
@@ -700,60 +745,131 @@ class _ReportingPageState extends State<ReportingPage> {
     }
 
     final location = locationController.text.trim();
+    final issueCategory = _getBackendIssueCategory();
+    final issueType = _getBackendIssueType();
+    final area = 'Ward $selectedWard - $selectedCommunityArea';
+    final existingReport = widget.reportToEdit;
 
-    try {
-      await AuthStore.withAccessToken(
-            (api, accessToken) => api.createReport(
-          accessToken: accessToken,
-          issueCategory: _getBackendIssueCategory(),
-          issueType: _getBackendIssueType(),
-          areaId: areaId,
-          location: location,
-          latitude: coordinates.latitude,
-          longitude: coordinates.longitude,
-          description: additionalInfoController.text.trim(),
-          imagePath: selectedImage?.path,
+    // Editing requires the ID assigned by the backend.
+    if (existingReport != null && existingReport.backendId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'This report cannot be edited because its backend ID is missing.',
+          ),
         ),
       );
+      return;
+    }
 
-      final report = ReportStore.addReport(
-        issueType: selectedIssueType!,
-        issue: selectedIssue!,
-        area: 'Ward $selectedWard - $selectedCommunityArea',
-        description: additionalInfoController.text,
-        pinLocation: pinLocationController.text,
-        locationAddress: locationController.text,
-        imagePath: selectedImage?.path ?? '',
-        isOfflineSubmission: false,
-      );
+    try {
+      if (existingReport != null) {
+        // Update the existing report on the backend.
+        await AuthStore.withAccessToken(
+              (api, accessToken) => api.updateReport(
+            reportId: existingReport.backendId!,
+            accessToken: accessToken,
+            issueCategory: issueCategory,
+            issueType: issueType,
+            areaId: areaId,
+            location: location,
+            latitude: coordinates.latitude,
+            longitude: coordinates.longitude,
+            description: additionalInfoController.text.trim(),
+            imagePath: selectedImage?.path,
+          ),
+        );
 
-      if (report == null) {
+        // Update the local copy only after the backend succeeds.
+        await ReportStore.updateReport(
+          report: existingReport,
+          issueType: selectedIssueType!,
+          issue: selectedIssue!,
+          area: area,
+          description: additionalInfoController.text,
+          pinLocation: pinLocationController.text,
+          locationAddress: locationController.text,
+          imagePath: selectedImage?.path ?? existingReport.imagePath,
+          backendIssueCategory: issueCategory,
+          backendIssueType: issueType,
+          areaId: areaId,
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+        );
+
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('The report was sent, but could not be saved locally.'),
+            content: Text('Report updated successfully.'),
           ),
         );
-        return;
+
+        // Return to the previous page, such as Profile.
+        Navigator.pop(context, true);
+      } else {
+        // Keep the existing new-report submission process.
+        final response = await AuthStore.withAccessToken(
+              (api, accessToken) => api.createReport(
+            accessToken: accessToken,
+            issueCategory: issueCategory,
+            issueType: issueType,
+            areaId: areaId,
+            location: location,
+            latitude: coordinates.latitude,
+            longitude: coordinates.longitude,
+            description: additionalInfoController.text.trim(),
+            imagePath: selectedImage?.path,
+          ),
+        );
+
+        final report = ReportStore.addReport(
+          issueType: selectedIssueType!,
+          issue: selectedIssue!,
+          area: area,
+          description: additionalInfoController.text,
+          pinLocation: pinLocationController.text,
+          locationAddress: locationController.text,
+          imagePath: selectedImage?.path ?? '',
+          backendId: (response['id'] as num?)?.toInt(),
+          backendIssueCategory: issueCategory,
+          backendIssueType: issueType,
+          areaId: areaId,
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+          isOfflineSubmission: false,
+        );
+
+        if (report == null) {
+          if (!mounted) return;
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'The report was sent, but could not be saved locally.',
+              ),
+            ),
+          );
+          return;
+        }
+
+        await ReportStore.markReportSubmitted(report);
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Report submitted successfully.'),
+          ),
+        );
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const StatusPage(),
+          ),
+        );
       }
-
-      await ReportStore.markReportSubmitted(report);
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Report submitted successfully.'),
-        ),
-      );
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const StatusPage(),
-        ),
-      );
     } on AuthApiException catch (error) {
       if (!mounted) return;
 
@@ -768,12 +884,13 @@ class _ReportingPageState extends State<ReportingPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Could not submit the report. Please check your connection and try again.',
+            'Could not save the report. Please check your connection and try again.',
           ),
         ),
       );
     }
   }
+
 
 
   @override

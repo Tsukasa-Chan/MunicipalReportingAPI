@@ -9,6 +9,7 @@ import 'auth_api.dart';
 import 'auth_store.dart';
 import 'report_store.dart';
 import 'Supervisor_theme.dart';
+import 'Reporting.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -222,6 +223,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+
   Widget _reportCard(ReportRequest report) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -241,10 +243,124 @@ class _ProfilePageState extends State<ProfilePage> {
             report.description.isEmpty ? 'None' : report.description,
           ),
           _reportDetail('Sync', report.syncStatus),
+
+          // Actions for the signed-in user's own report.
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton.icon(
+                onPressed: () => _editReport(report),
+                icon: const Icon(Icons.edit),
+                label: const Text('Edit'),
+              ),
+              const SizedBox(width: 8),
+              TextButton.icon(
+                onPressed: () => _deleteReport(report),
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('Delete'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.red,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
+
+  Future<void> _editReport(ReportRequest report) async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ReportingPage(reportToEdit: report),
+      ),
+    );
+
+    // Refresh the report card after the form saves successfully.
+    if (result == true && mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _deleteReport(ReportRequest report) async {
+    if (report.backendId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'This report cannot be deleted because its backend ID is missing.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Report'),
+        content: const Text(
+          'Are you sure you want to delete this report? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      // Delete from the backend first.
+      await AuthStore.withAccessToken(
+            (api, accessToken) => api.deleteReport(
+          reportId: report.backendId!,
+          accessToken: accessToken,
+        ),
+      );
+
+      // Remove the local copy only after backend deletion succeeds.
+      await ReportStore.removeReport(report);
+
+      if (!mounted) return;
+
+      setState(() {});
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Report deleted successfully.'),
+        ),
+      );
+    } on AuthApiException catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Could not delete the report. Please check your connection and try again.',
+          ),
+        ),
+      );
+    }
+  }
+
 
   Widget _reportDetail(String label, String value) {
     return Padding(

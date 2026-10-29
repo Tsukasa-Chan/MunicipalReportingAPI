@@ -270,6 +270,83 @@ class AuthApi {
   }
 
 
+
+  // UPDATE REPORT
+  // Backend: PUT /api/Reports/{id}
+  // Uses multipart form data because the backend accepts an optional image.
+  Future<Map<String, dynamic>> updateReport({
+    required int reportId,
+    required String accessToken,
+    required String issueCategory,
+    required String issueType,
+    required int areaId,
+    required String location,
+    required double latitude,
+    required double longitude,
+    String description = '',
+    String? imagePath,
+  }) async {
+    final request = http.MultipartRequest(
+      'PUT',
+      _endpoint('/api/Reports/$reportId'),
+    );
+
+    request.headers.addAll({
+      'Accept': 'application/json',
+      'Authorization': 'Bearer $accessToken',
+    });
+
+    request.fields.addAll({
+      'IssueCategory': issueCategory,
+      'IssueType': issueType,
+      'AreaId': areaId.toString(),
+      'Location': location,
+      'Latitude': latitude.toString(),
+      'Longitude': longitude.toString(),
+      'Description': description,
+    });
+
+    if (imagePath != null && imagePath.trim().isNotEmpty) {
+      request.files.add(
+        await http.MultipartFile.fromPath('Image', imagePath),
+      );
+    }
+
+    final response = await _send(
+          () async => http.Response.fromStream(
+        await _client.send(request),
+      ),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _exceptionFromResponse(response);
+    }
+
+    return _decodeJsonObject(response);
+  }
+
+
+
+  // DELETE REPORT
+  // Backend: DELETE /api/Reports/{id}
+  Future<void> deleteReport({
+    required int reportId,
+    required String accessToken,
+  }) async {
+    final response = await _send(
+          () => _client.delete(
+        _endpoint('/api/Reports/$reportId'),
+        headers: _headers(accessToken: accessToken),
+      ),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _exceptionFromResponse(response);
+    }
+  }
+
+
+
   // UPDATE NAME
   // Backend: PUT /api/Users/profile
   Future<Map<String, dynamic>> updateFullName({

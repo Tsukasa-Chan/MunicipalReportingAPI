@@ -37,6 +37,12 @@ class ReportRequest {
     this.managerSignature = '',
     this.workerSignature = '',
     this.storageType = 'online',
+    this.backendId,
+    this.backendIssueCategory = '',
+    this.backendIssueType = '',
+    this.areaId,
+    this.latitude,
+    this.longitude,
   }) : createdAt = createdAt ?? DateTime.now(),
        queuedAt = queuedAt ?? createdAt ?? DateTime.now();
 
@@ -70,6 +76,12 @@ class ReportRequest {
   String managerSignature;
   String workerSignature;
   String storageType;
+  int? backendId;
+  String backendIssueCategory;
+  String backendIssueType;
+  int? areaId;
+  double? latitude;
+  double? longitude;
 
   bool get isOffline => storageType == 'offline';
   bool get isSubmitted => submittedAt != null;
@@ -111,6 +123,12 @@ class ReportRequest {
     'totalTime': totalTime,
     'managerSignature': managerSignature,
     'workerSignature': workerSignature,
+    'backendId': backendId,
+    'backendIssueCategory': backendIssueCategory,
+    'backendIssueType': backendIssueType,
+    'areaId': areaId,
+    'latitude': latitude,
+    'longitude': longitude,
   };
 
   factory ReportRequest.fromJson(Map<String, dynamic> json) => ReportRequest(
@@ -152,6 +170,13 @@ class ReportRequest {
     managerSignature: json['managerSignature'] as String? ?? '',
     workerSignature: json['workerSignature'] as String? ?? '',
     storageType: json['storageType'] as String? ?? 'online',
+    backendId: json['backendId'] as int?,
+    backendIssueCategory:
+    json['backendIssueCategory'] as String? ?? '',
+    backendIssueType: json['backendIssueType'] as String? ?? '',
+    areaId: json['areaId'] as int?,
+    latitude: (json['latitude'] as num?)?.toDouble(),
+    longitude: (json['longitude'] as num?)?.toDouble(),
   );
 }
 
@@ -419,6 +444,12 @@ class ReportStore {
     String pinLocation = '',
     String locationAddress = '',
     required String imagePath,
+    int? backendId,
+    String backendIssueCategory = '',
+    String backendIssueType = '',
+    int? areaId,
+    double? latitude,
+    double? longitude,
     bool isOfflineSubmission = false,
   }) {
     final user = AuthStore.currentUser;
@@ -441,6 +472,12 @@ class ReportStore {
       queuedAt: DateTime.now(),
       createdAt: DateTime.now(),
       submittedAt: null,
+      backendId: backendId,
+      backendIssueCategory: backendIssueCategory,
+      backendIssueType: backendIssueType,
+      areaId: areaId,
+      latitude: latitude,
+      longitude: longitude,
     );
     _reports.insert(0, report);
     _save();
@@ -493,17 +530,40 @@ class ReportStore {
     return true;
   }
 
-  static void updateReport({
+
+
+  static Future<void> updateReport({
     required ReportRequest report,
     required String issueType,
     required String issue,
+    required String area,
     required String description,
-  }) {
+    required String pinLocation,
+    required String locationAddress,
+    required String imagePath,
+    required String backendIssueCategory,
+    required String backendIssueType,
+    required int areaId,
+    required double latitude,
+    required double longitude,
+  }) async {
     report.issueType = issueType;
     report.issue = issue;
+    report.area = area.trim();
     report.description = description.trim();
-    _save();
+    report.pinLocation = pinLocation.trim();
+    report.locationAddress = locationAddress.trim();
+    report.imagePath = imagePath;
+    report.backendIssueCategory = backendIssueCategory;
+    report.backendIssueType = backendIssueType;
+    report.areaId = areaId;
+    report.latitude = latitude;
+    report.longitude = longitude;
+
+    await _save();
   }
+
+
 
   static void saveJobCompletion({
     required ReportRequest report,
@@ -536,6 +596,11 @@ class ReportStore {
       relatedReport.status = 'Completed';
     }
     _save();
+  }
+
+  static Future<void> removeReport(ReportRequest report) async {
+    _reports.remove(report);
+    await _save();
   }
 
   // Mark a report as submitted and save its updated status.
