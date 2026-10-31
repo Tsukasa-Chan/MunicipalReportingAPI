@@ -27,7 +27,7 @@ class _StartupPageState extends State<StartupPage> {
     // The saved login is checked while the splash screen is showing.
     final restoreFuture = AuthStore.restoreSession();
 
-    await Future<void>.delayed(const Duration(seconds: 6));
+    await Future<void>.delayed(const Duration(seconds: 2));
     final restored = await restoreFuture;
 
     if (!mounted) return;

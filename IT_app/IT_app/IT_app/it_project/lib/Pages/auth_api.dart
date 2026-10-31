@@ -593,4 +593,26 @@ class AuthApi {
 
     return messages;
   }
+
+  // get - Used for fetching lists, the supervisor reports
+  Future<List<dynamic>> getRaw(String path, {required String accessToken}) async {
+    final response = await _send(
+      () => _client.get(
+        _endpoint(path),
+        headers: _headers(accessToken: accessToken),
+      ),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _exceptionFromResponse(response);
+    }
+
+    final body = response.body.trim();
+    if (body.isEmpty) return [];
+
+    final decoded = jsonDecode(body);
+    if (decoded is List) return decoded;
+    return [];
+  }
+
 }
