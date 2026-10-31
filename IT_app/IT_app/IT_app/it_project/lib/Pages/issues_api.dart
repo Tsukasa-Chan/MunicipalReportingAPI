@@ -13,6 +13,8 @@ import 'api_config.dart';
 // Holds the route paths such as /api/Issues.
 import 'api_paths.dart';
 
+import 'package:flutter/foundation.dart';
+
 // "StreetLightNotWorking" -> "Street light not working".
 String humanizeEnumName(String value) {
   // Remove spaces around the text.
@@ -584,7 +586,14 @@ class IssuesApi {
     ).replace(queryParameters: query.isEmpty ? null : query);
 
     // Send the request and wait for the answer.
+   // final response = await _send(uri);
+
+    debugPrint('REQUEST: GET $uri');
+
     final response = await _send(uri);
+
+    debugPrint('STATUS CODE: ${response.statusCode}');
+    debugPrint('RESPONSE BODY: ${response.body}');
 
     // Any status outside 200-299 means the request failed.
     if (response.statusCode < 200 || response.statusCode >= 300) {

@@ -173,6 +173,9 @@ namespace MunicipalReportingAPI.Controllers
         // Optional filters: ?wardId=58 or ?areaId=3 (or both).
         // No filter = whole system.
         // Counts are of ISSUES, not individual resident reports.
+
+
+        // Get issue statistics for an area or ward.
         [HttpGet("stats")]
         public async Task<IActionResult> GetStats(
             [FromQuery] int? wardId,
@@ -190,6 +193,7 @@ namespace MunicipalReportingAPI.Controllers
                 return NotFound("Area not found");
             }
 
+            // Get the issues for the selected area or ward.
             var issues = _context.Issues.AsQueryable();
 
             if (wardId.HasValue)
@@ -198,16 +202,27 @@ namespace MunicipalReportingAPI.Controllers
             if (areaId.HasValue)
                 issues = issues.Where(i => i.AreaId == areaId.Value);
 
-            var grouped = await issues
+            // Get each issue's category, status and number of reports.
+            var issueData = await issues
+                .Select(i => new
+                {
+                    i.IssueCategory,
+                    i.Status,
+                    ReportCount = i.Reports.Count()
+                })
+                .ToListAsync();
+
+            // Group the results after loading them from the database.
+            var grouped = issueData
                 .GroupBy(i => new { i.IssueCategory, i.Status })
                 .Select(g => new
                 {
                     g.Key.IssueCategory,
                     g.Key.Status,
                     Count = g.Count(),
-                    Reports = g.Sum(i => i.Reports.Count())
+                    Reports = g.Sum(i => i.ReportCount)
                 })
-                .ToListAsync();
+                .ToList();
 
             int Count(ReportStatus s) =>
                 grouped.Where(x => x.Status == s).Sum(x => x.Count);
@@ -224,6 +239,7 @@ namespace MunicipalReportingAPI.Controllers
             stats.ActiveIssues = stats.Reported + stats.InProgress;
             stats.ResolvedIssues = stats.Resolved;
 
+            // Calculate statistics for each category.
             stats.ByCategory = Enum.GetValues<IssueCategory>()
                 .Select(c =>
                 {
@@ -250,6 +266,7 @@ namespace MunicipalReportingAPI.Controllers
 
             return Ok(stats);
         }
+
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)

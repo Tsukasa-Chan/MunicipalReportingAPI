@@ -5,6 +5,29 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'auth_store.dart';
 
+// Converts older saved status values to the statuses used by the backend.
+String _normalizeReportStatus(String status) {
+  switch (status.trim().toLowerCase()) {
+    case 'pending':
+    case 'reported':
+      return 'Reported';
+
+    case 'assigned':
+    case 'on-site':
+    case 'on site':
+    case 'inprogress':
+    case 'in progress':
+      return 'In progress';
+
+    case 'completed':
+    case 'resolved':
+      return 'Resolved';
+
+    default:
+      return status;
+  }
+}
+
 class ReportRequest {
   ReportRequest({
     required this.id,
@@ -19,7 +42,7 @@ class ReportRequest {
     this.submittedAt,
     this.syncStatus = 'Pending sync',
     this.description = '',
-    this.status = 'Pending',
+    this.status = 'Reported',
     this.assignedSupervisorUsername = '',
     this.scheduledAt,
     this.assignedWorkerUsername = '',
@@ -77,7 +100,12 @@ class ReportRequest {
   void markSubmitted() {
     submittedAt = DateTime.now();
     syncStatus = 'Synced';
-    status = status.isEmpty ? 'Pending' : status;
+
+    if (status.isEmpty) {
+      status = 'Reported';
+    } else {
+      status = _normalizeReportStatus(status);
+    }
   }
 
   Map<String, dynamic> toJson() => {
@@ -113,46 +141,52 @@ class ReportRequest {
     'workerSignature': workerSignature,
   };
 
-  factory ReportRequest.fromJson(Map<String, dynamic> json) => ReportRequest(
-    id: json['id'] as int,
-    senderName: json['senderName'] as String,
-    senderUsername: json['senderUsername'] as String? ?? '',
-    issueType: json['issueType'] as String,
-    issue: json['issue'] as String,
-    area: json['area'] as String,
-    imagePath: json['imagePath'] as String? ?? '',
-    createdAt: DateTime.parse(json['createdAt'] as String),
-    queuedAt:
-    DateTime.tryParse(json['queuedAt'] as String? ?? '') ?? DateTime.now(),
-    submittedAt: json['submittedAt'] == null
-        ? null
-        : DateTime.tryParse(json['submittedAt'] as String),
-    syncStatus: json['syncStatus'] as String? ?? 'Pending sync',
-    description: json['description'] as String? ?? '',
-    status: json['status'] as String? ?? 'Pending',
-    assignedSupervisorUsername:
-    json['assignedSupervisorUsername'] as String? ?? '',
-    scheduledAt: json['scheduledAt'] == null
-        ? null
-        : DateTime.tryParse(json['scheduledAt'] as String),
-    assignedWorkerUsername: json['assignedWorkerUsername'] as String? ?? '',
-    invoiceNumber: json['invoiceNumber'] as String?,
-    invoiceSubmissionStatus: json['invoiceSubmissionStatus'] as String? ?? '',
-    invoiceSubmittedAt: json['invoiceSubmittedAt'] == null
-        ? null
-        : DateTime.tryParse(json['invoiceSubmittedAt'] as String),
-    workerName: json['workerName'] as String? ?? '',
-    workerId: json['workerId'] as String? ?? '',
-    jobNumber: json['jobNumber'] as String? ?? '',
-    locationAddress: json['locationAddress'] as String? ?? '',
-    pinLocation: json['pinLocation'] as String? ?? '',
-    startTime: json['startTime'] as String? ?? '',
-    stopTime: json['stopTime'] as String? ?? '',
-    totalTime: json['totalTime'] as String? ?? '',
-    managerSignature: json['managerSignature'] as String? ?? '',
-    workerSignature: json['workerSignature'] as String? ?? '',
-    storageType: json['storageType'] as String? ?? 'online',
-  );
+  factory ReportRequest.fromJson(Map<String, dynamic> json) =>
+      ReportRequest(
+        id: json['id'] as int,
+        senderName: json['senderName'] as String,
+        senderUsername: json['senderUsername'] as String? ?? '',
+        issueType: json['issueType'] as String,
+        issue: json['issue'] as String,
+        area: json['area'] as String,
+        imagePath: json['imagePath'] as String? ?? '',
+        createdAt: DateTime.parse(json['createdAt'] as String),
+        queuedAt:
+        DateTime.tryParse(json['queuedAt'] as String? ?? '') ??
+            DateTime.now(),
+        submittedAt: json['submittedAt'] == null
+            ? null
+            : DateTime.tryParse(json['submittedAt'] as String),
+        syncStatus: json['syncStatus'] as String? ?? 'Pending sync',
+        description: json['description'] as String? ?? '',
+        status: _normalizeReportStatus(
+          json['status'] as String? ?? 'Reported',
+        ),
+        assignedSupervisorUsername:
+        json['assignedSupervisorUsername'] as String? ?? '',
+        scheduledAt: json['scheduledAt'] == null
+            ? null
+            : DateTime.tryParse(json['scheduledAt'] as String),
+        assignedWorkerUsername:
+        json['assignedWorkerUsername'] as String? ?? '',
+        invoiceNumber: json['invoiceNumber'] as String?,
+        invoiceSubmissionStatus:
+        json['invoiceSubmissionStatus'] as String? ?? '',
+        invoiceSubmittedAt: json['invoiceSubmittedAt'] == null
+            ? null
+            : DateTime.tryParse(json['invoiceSubmittedAt'] as String),
+        workerName: json['workerName'] as String? ?? '',
+        workerId: json['workerId'] as String? ?? '',
+        jobNumber: json['jobNumber'] as String? ?? '',
+        locationAddress: json['locationAddress'] as String? ?? '',
+        pinLocation: json['pinLocation'] as String? ?? '',
+        startTime: json['startTime'] as String? ?? '',
+        stopTime: json['stopTime'] as String? ?? '',
+        totalTime: json['totalTime'] as String? ?? '',
+        managerSignature: json['managerSignature'] as String? ?? '',
+        workerSignature: json['workerSignature'] as String? ?? '',
+        storageType: json['storageType'] as String? ?? 'online',
+      );
 }
 
 class ReportGroup {
@@ -168,16 +202,22 @@ class ReportGroup {
 
   List<String> get reporterNames {
     final namesByReporter = <String, String>{};
+
     for (final report in reports) {
       final username = report.senderUsername.trim().toLowerCase();
       final name = report.senderName.trim();
+
       final identity = username.isNotEmpty
           ? 'user:$username'
           : name.isNotEmpty
           ? 'name:${name.toLowerCase()}'
           : 'report:${report.id}';
-      if (name.isNotEmpty) namesByReporter.putIfAbsent(identity, () => name);
+
+      if (name.isNotEmpty) {
+        namesByReporter.putIfAbsent(identity, () => name);
+      }
     }
+
     return List.unmodifiable(namesByReporter.values);
   }
 
@@ -187,10 +227,13 @@ class ReportGroup {
         final dateOrder = first.createdAt.compareTo(second.createdAt);
         return dateOrder != 0 ? dateOrder : first.id.compareTo(second.id);
       });
+
     final reporters = <String>{};
+
     for (final report in reports) {
       final username = report.senderUsername.trim().toLowerCase();
       final sender = report.senderName.trim().toLowerCase();
+
       reporters.add(
         username.isNotEmpty
             ? 'user:$username'
@@ -199,6 +242,7 @@ class ReportGroup {
             : 'report:${report.id}',
       );
     }
+
     return ReportGroup(
       firstReport: orderedReports.first,
       reports: List.unmodifiable(orderedReports),
@@ -210,7 +254,9 @@ class ReportGroup {
 class ReportStore {
   static const reportsEndpointPath = '/reports';
   static const _storageKey = 'offline_reports';
+
   static final List<ReportRequest> _reports = [];
+
   static int _nextId = 1;
   static SharedPreferences? _preferences;
   static bool _isOnline = true;
@@ -225,7 +271,9 @@ class ReportStore {
     try {
       final connectivity = Connectivity();
       final initialStatus = await connectivity.checkConnectivity();
+
       _isOnline = initialStatus != ConnectivityResult.none;
+
       connectivity.onConnectivityChanged.listen((result) {
         _isOnline = result != ConnectivityResult.none;
       });
@@ -234,15 +282,23 @@ class ReportStore {
     }
 
     _preferences = await SharedPreferences.getInstance();
-    final storedReports = _preferences!.getStringList(_storageKey) ?? [];
+
+    final storedReports =
+        _preferences!.getStringList(_storageKey) ?? [];
+
     _reports
       ..clear()
       ..addAll(
         storedReports.map(
-              (value) =>
-              ReportRequest.fromJson(jsonDecode(value) as Map<String, dynamic>),
+              (value) => ReportRequest.fromJson(
+            jsonDecode(value) as Map<String, dynamic>,
+          ),
         ),
       );
+
+    // Save the normalized statuses so older records use the backend values.
+    await _save();
+
     if (_reports.isNotEmpty) {
       _nextId =
           _reports
@@ -253,24 +309,30 @@ class ReportStore {
   }
 
   static List<ReportRequest> get reports => List.unmodifiable(_reports);
+
   static List<ReportRequest> get offlineReports => List.unmodifiable(
     _reports.where((report) => report.storageType == 'offline').toList(),
   );
+
   static List<ReportRequest> get onlineReports => List.unmodifiable(
     _reports.where((report) => report.storageType == 'online').toList(),
   );
 
   static Map<String, dynamic> analyticsSummary() {
     final totalReports = _reports.length;
+
     final syncedReports = _reports
         .where((report) => report.syncStatus == 'Synced')
         .length;
+
     final offlineReports = _reports
         .where((report) => report.storageType == 'offline')
         .length;
+
     final onlineReports = _reports
         .where((report) => report.storageType == 'online')
         .length;
+
     final pendingReports = _reports
         .where((report) => report.syncStatus != 'Synced')
         .length;
@@ -284,52 +346,76 @@ class ReportStore {
     };
   }
 
-  /// Returns reports belonging to an area even when one part of the app stores
-  /// it as "Desainagar" and another stores it as "Ward 58 - Desainagar".
   static List<ReportRequest> reportsForArea(String area) {
-    String normalizeArea(String value) => value
-        .trim()
-        .toLowerCase()
-        .replaceAll(RegExp(r'^ward\s+\d+\s*[-–:]\s*'), '')
-        .replaceAll(RegExp(r'\s+'), ' ');
+    final normalizedArea = area.trim().toLowerCase();
 
-    final normalizedArea = normalizeArea(area);
-    if (normalizedArea.isEmpty || normalizedArea == 'not set') {
+    final areaReports =
+    _reports
+        .where(
+          (report) =>
+      report.area.trim().toLowerCase() == normalizedArea,
+    )
+        .toList()
+      ..sort((first, second) => second.id.compareTo(first.id));
+
+    return List.unmodifiable(areaReports);
+  }
+
+  // Gets only reports actually assigned to the specified supervisor.
+  static List<ReportRequest> reportsForSupervisor(
+      String supervisorUsername,
+      ) {
+    final normalizedUsername =
+    supervisorUsername.trim().toLowerCase();
+
+    if (normalizedUsername.isEmpty) {
       return const [];
     }
-    final areaReports = _reports.where((report) {
-      final reportArea = normalizeArea(report.area);
-      return reportArea == normalizedArea;
-    }).toList()
+
+    final supervisorReports =
+    _reports
+        .where(
+          (report) =>
+      report.assignedSupervisorUsername.trim().toLowerCase() ==
+          normalizedUsername,
+    )
+        .toList()
       ..sort((first, second) => second.id.compareTo(first.id));
-    return List.unmodifiable(areaReports);
+
+    return List.unmodifiable(supervisorReports);
   }
 
   static List<ReportRequest> reportsForSupervisorOnDate({
     required String supervisorUsername,
     required DateTime date,
   }) {
-    final normalizedUsername = supervisorUsername.trim().toLowerCase();
+    final normalizedUsername =
+    supervisorUsername.trim().toLowerCase();
+
     if (normalizedUsername.isEmpty) {
       return const [];
     }
+
     final dayReports =
     _reports.where((report) {
       final scheduledAt = report.scheduledAt?.toLocal();
+
       return report.assignedSupervisorUsername.trim().toLowerCase() ==
           normalizedUsername &&
-          AuthStore.canSuperviseIssue(
-            supervisorUsername: normalizedUsername,
-            issueType: report.issueType,
-          ) &&
           scheduledAt != null &&
           scheduledAt.year == date.year &&
           scheduledAt.month == date.month &&
           scheduledAt.day == date.day;
-    }).toList()..sort((first, second) {
-      final firstDate = first.scheduledAt!.compareTo(second.scheduledAt!);
-      return firstDate != 0 ? firstDate : first.id.compareTo(second.id);
-    });
+    }).toList()
+      ..sort((first, second) {
+        final firstDate =
+        first.scheduledAt!.compareTo(second.scheduledAt!);
+
+        return firstDate != 0
+            ? firstDate
+            : first.id.compareTo(second.id);
+      });
+
     return List.unmodifiable(dayReports);
   }
 
@@ -341,8 +427,10 @@ class ReportStore {
     if (AuthStore.currentUser?.isAdmin != true) {
       return false;
     }
+
     final supervisor = AuthStore.findUser(supervisorUsername);
     final assignedReports = reports.toList();
+
     if (supervisor?.isSupervisor != true ||
         assignedReports.isEmpty ||
         assignedReports.any(
@@ -355,55 +443,70 @@ class ReportStore {
         )) {
       return false;
     }
+
     for (final report in assignedReports) {
       report.assignedSupervisorUsername = supervisor!.username;
       report.scheduledAt = scheduledAt;
-      if (report.status == 'Pending') {
-        report.status = 'Assigned';
-      }
+
+      // Assigning a supervisor does not change the report's status.
     }
+
     _save();
     return true;
   }
 
-  static List<ReportGroup> groupReports(Iterable<ReportRequest> reports) {
+  static List<ReportGroup> groupReports(
+      Iterable<ReportRequest> reports,
+      ) {
     final groups = <String, List<ReportRequest>>{};
+
     for (final report in reports) {
       final key = [
         report.issueType.trim().toLowerCase(),
         report.issue.trim().toLowerCase(),
         report.area.trim().toLowerCase(),
       ].join('\u0000');
+
       groups.putIfAbsent(key, () => []).add(report);
     }
 
-    final groupedReports = groups.values.map(ReportGroup.fromReports).toList()
+    final groupedReports =
+    groups.values.map(ReportGroup.fromReports).toList()
       ..sort(
             (first, second) =>
             second.firstReport.id.compareTo(first.firstReport.id),
       );
+
     return List.unmodifiable(groupedReports);
   }
 
   static List<ReportRequest> reportsForCurrentUser() {
     final user = AuthStore.currentUser;
+
     if (user == null) {
       return const [];
     }
 
     final username = user.username.trim().toLowerCase();
     final senderName = user.fullName.toLowerCase();
-    final userReports = _reports.where((report) {
-      final reportUsername = report.senderUsername.trim().toLowerCase();
+
+    final userReports =
+    _reports.where((report) {
+      final reportUsername =
+      report.senderUsername.trim().toLowerCase();
+
       return reportUsername.isNotEmpty
           ? reportUsername == username
           : report.senderName.trim().toLowerCase() == senderName;
-    }).toList()..sort((first, second) => second.id.compareTo(first.id));
+    }).toList()
+      ..sort((first, second) => second.id.compareTo(first.id));
+
     return List.unmodifiable(userReports);
   }
 
   static List<ReportRequest> reportsForWorker(String username) {
     final normalizedUsername = username.trim().toLowerCase();
+
     if (normalizedUsername.isEmpty) {
       return const [];
     }
@@ -417,6 +520,7 @@ class ReportStore {
     )
         .toList()
       ..sort((first, second) => second.id.compareTo(first.id));
+
     return List.unmodifiable(workerReports);
   }
 
@@ -431,6 +535,7 @@ class ReportStore {
     bool isOfflineSubmission = false,
   }) {
     final user = AuthStore.currentUser;
+
     if (user == null) {
       return null;
     }
@@ -445,25 +550,32 @@ class ReportStore {
       description: description.trim(),
       pinLocation: pinLocation.trim(),
       locationAddress: locationAddress.trim(),
-      storageType: 'offline',
-      syncStatus: 'Queued offline',
+      storageType: isOfflineSubmission ? 'offline' : 'online',
+      syncStatus: isOfflineSubmission
+          ? 'Queued offline'
+          : 'Pending submission',
+      status: 'Reported',
       queuedAt: DateTime.now(),
       createdAt: DateTime.now(),
       submittedAt: null,
     );
+
     _reports.insert(0, report);
     _save();
+
     return report;
   }
 
-  static List<ReportRequest> get pendingSyncReports => List.unmodifiable(
-    _reports
-        .where(
-          (report) =>
-      report.storageType == 'offline' && report.syncStatus != 'Synced',
-    )
-        .toList(),
-  );
+  static List<ReportRequest> get pendingSyncReports =>
+      List.unmodifiable(
+        _reports
+            .where(
+              (report) =>
+          report.storageType == 'offline' &&
+              report.syncStatus != 'Synced',
+        )
+            .toList(),
+      );
 
   static Future<void> syncPendingReports(
       Future<bool> Function(ReportRequest report) sendReport,
@@ -474,11 +586,15 @@ class ReportStore {
         report.markSubmitted();
       }
     }
+
     await _save();
   }
 
-  static void updateStatus(ReportRequest report, String status) {
-    report.status = status;
+  static void updateStatus(
+      ReportRequest report,
+      String status,
+      ) {
+    report.status = _normalizeReportStatus(status);
     _save();
   }
 
@@ -488,16 +604,20 @@ class ReportStore {
   }) {
     final currentUser = AuthStore.currentUser;
     final worker = AuthStore.findUser(workerUsername);
-    if ((currentUser?.isSupervisor != true && currentUser?.isAdmin != true) ||
+
+    if ((currentUser?.isSupervisor != true &&
+        currentUser?.isAdmin != true) ||
         worker == null ||
         !worker.isWorker ||
         !_reports.contains(report) ||
-        (report.status != 'Pending' && report.status != 'Assigned')) {
+        (report.status != 'Reported' &&
+            report.status != 'In progress')) {
       return false;
     }
 
     report.assignedWorkerUsername = worker.username;
-    report.status = 'Assigned';
+    report.status = 'In progress';
+
     _save();
     return true;
   }
@@ -511,6 +631,7 @@ class ReportStore {
     report.issueType = issueType;
     report.issue = issue;
     report.description = description.trim();
+
     _save();
   }
 
@@ -528,7 +649,9 @@ class ReportStore {
     required String managerSignature,
     required String workerSignature,
   }) {
-    report.invoiceNumber ??= 'LOG-${report.id.toString().padLeft(4, '0')}';
+    report.invoiceNumber ??=
+    'LOG-${report.id.toString().padLeft(4, '0')}';
+
     report.workerName = workerName.trim();
     report.workerId = workerId.trim();
     report.jobNumber = jobNumber.trim();
@@ -539,20 +662,43 @@ class ReportStore {
     report.totalTime = totalTime.trim();
     report.managerSignature = managerSignature.trim();
     report.workerSignature = workerSignature.trim();
+
     for (final relatedReport in {report, ...relatedReports}) {
-      relatedReport.invoiceSubmissionStatus = 'Pending admin submission';
+      relatedReport.invoiceSubmissionStatus =
+      'Pending admin submission';
       relatedReport.invoiceSubmittedAt = null;
-      relatedReport.status = 'Completed';
+      relatedReport.status = 'Resolved';
     }
+
     _save();
+  }
+
+  // Mark a report as submitted and save its updated status.
+  static Future<void> markReportSubmitted(
+      ReportRequest report,
+      ) async {
+    if (!_reports.contains(report)) {
+      return;
+    }
+
+    report.storageType = 'online';
+    report.markSubmitted();
+
+    await _save();
   }
 
   static Future<void> _save() async {
     final preferences = _preferences;
-    if (preferences == null) return;
+
+    if (preferences == null) {
+      return;
+    }
+
     await preferences.setStringList(
       _storageKey,
-      _reports.map((report) => jsonEncode(report.toJson())).toList(),
+      _reports
+          .map((report) => jsonEncode(report.toJson()))
+          .toList(),
     );
   }
 }
