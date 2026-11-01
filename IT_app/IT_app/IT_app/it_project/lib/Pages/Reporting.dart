@@ -14,12 +14,7 @@ import 'auth_store.dart';
 import 'Supervisor_theme.dart';
 import 'report_store.dart';
 
-const Color _orange = Color(0xFFC94F1B);
-const Color _cream = Color(0xFFFFF8F4);
-const Color _darkText = Color(0xFF292524);
-const Color _secondaryText = Color(0xFF78716C);
-const Color _borderColor = Color(0xFFE8C7B8);
-const Color _lightOrange = Color(0xFFFFE9DC);
+import 'auth_api.dart'; // added
 
 class ReportingPage extends StatefulWidget {
   const ReportingPage({super.key});
@@ -118,105 +113,87 @@ class _ReportingPageState extends State<ReportingPage> {
   Widget build(BuildContext context) {
     final isSupervisor = AuthStore.currentUser?.isStaff == true;
 
-    return Theme(
-      data: Theme.of(context).copyWith(
-        colorScheme: Theme.of(context).colorScheme.copyWith(
-          primary: _orange,
-          secondary: _orange,
-          surface: Colors.white,
-          onSurface: _darkText,
-        ),
-        scaffoldBackgroundColor: _cream,
-        textSelectionTheme: const TextSelectionThemeData(
-          cursorColor: _orange,
-          selectionColor: _lightOrange,
-          selectionHandleColor: _orange,
-        ),
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: pagePrimaryColor(isSupervisor: isSupervisor),
+        title: const Text('Reporting'),
+        actions: [
+          IconButton(
+            tooltip: 'Help',
+            icon: const Icon(Icons.help_outline),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const HelpPage(),
+              ),
+            ),
+          ),
+        ],
       ),
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: pagePrimaryColor(isSupervisor: isSupervisor),
-          foregroundColor: Colors.white,
-          elevation: 0,
-          title: const Text(
-            'Reporting',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          actions: [
-            IconButton(
-              tooltip: 'Help',
-              icon: const Icon(
-                Icons.help_outline,
-                color: Colors.white,
-              ),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const HelpPage(),
-                ),
-              ),
-            ),
-          ],
+      body: Container(
+        decoration: pageBackgroundDecoration(
+          isSupervisor: isSupervisor,
         ),
-        body: Container(
-          decoration: pageBackgroundDecoration(
-            isSupervisor: isSupervisor,
-          ),
-          child: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: _borderColor.withValues(alpha: 0.65),
+        child: Form(
+          key: formKey,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.84),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Submit a Report',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _darkText.withValues(alpha: 0.06),
-                      blurRadius: 14,
-                      offset: const Offset(0, 5),
+
+                  const SizedBox(height: 24),
+
+                  // Type of issue dropdown
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedIssueType,
+                    decoration: const InputDecoration(
+                      labelText: 'Type of issue',
                     ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Text(
-                      'Submit a Report',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: _darkText,
+                    items: issueTypes
+                        .map(
+                          (issue) => DropdownMenuItem(
+                        value: issue,
+                        child: Text(issue),
                       ),
-                    ),
+                    )
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        selectedIssueType = value;
+                        selectedIssue = null;
+                      });
+                    },
+                    validator: (value) => value == null
+                        ? 'Please select the type of issue'
+                        : null,
+                  ),
 
-                    const SizedBox(height: 24),
+                  const SizedBox(height: 14),
 
-                    // Type of issue dropdown
+                  // Specific issue dropdown
+                  if (selectedIssueType != null)
                     DropdownButtonFormField<String>(
-                      initialValue: selectedIssueType,
-                      isExpanded: true,
-                      style: const TextStyle(
-                        color: _darkText,
-                        fontSize: 14,
+                      initialValue: selectedIssue,
+                      decoration: const InputDecoration(
+                        labelText: 'Specific issue',
                       ),
-                      icon: const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: _orange,
-                      ),
-                      decoration: _inputDecoration(
-                        label: 'Type of issue',
-                      ),
-                      items: issueTypes
+                      items: availableIssues
                           .map(
                             (issue) => DropdownMenuItem(
                           value: issue,
@@ -226,349 +203,242 @@ class _ReportingPageState extends State<ReportingPage> {
                           .toList(),
                       onChanged: (value) {
                         setState(() {
-                          selectedIssueType = value;
-                          selectedIssue = null;
+                          selectedIssue = value;
                         });
                       },
                       validator: (value) => value == null
-                          ? 'Please select the type of issue'
+                          ? 'Please select the specific issue'
                           : null,
                     ),
 
+                  if (selectedIssueType != null)
                     const SizedBox(height: 14),
 
-                    // Specific issue dropdown
-                    if (selectedIssueType != null)
-                      DropdownButtonFormField<String>(
-                        initialValue: selectedIssue,
-                        isExpanded: true,
-                        style: const TextStyle(
-                          color: _darkText,
-                          fontSize: 14,
+                  // Ward dropdown
+                  DropdownButtonFormField<int>(
+                    initialValue: selectedWard,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Ward',
+                    ),
+                    items: AuthStore.wardAreas.keys
+                        .map(
+                          (ward) => DropdownMenuItem(
+                        value: ward,
+                        child: Text(
+                          'Ward $ward',
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        icon: const Icon(
-                          Icons.keyboard_arrow_down_rounded,
-                          color: _orange,
-                        ),
-                        decoration: _inputDecoration(
-                          label: 'Specific issue',
-                        ),
-                        items: availableIssues
-                            .map(
-                              (issue) => DropdownMenuItem(
-                            value: issue,
-                            child: Text(issue),
-                          ),
-                        )
-                            .toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            selectedIssue = value;
-                          });
-                        },
-                        validator: (value) => value == null
-                            ? 'Please select the specific issue'
-                            : null,
                       ),
+                    )
+                        .toList(),
+                    validator: (value) => value == null
+                        ? 'Please select your ward'
+                        : null,
+                    onChanged: (ward) {
+                      setState(() {
+                        selectedWard = ward;
 
-                    if (selectedIssueType != null)
-                      const SizedBox(height: 14),
+                        // Reset the area when the ward changes.
+                        selectedCommunityArea = null;
+                      });
+                    },
+                  ),
 
-                    // Ward dropdown
-                    DropdownButtonFormField<int>(
-                      initialValue: selectedWard,
+                  // Area dropdown appears after selecting a ward.
+                  if (selectedWard != null) ...[
+                    const SizedBox(height: 14),
+
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedCommunityArea,
                       isExpanded: true,
-                      style: const TextStyle(
-                        color: _darkText,
-                        fontSize: 14,
+                      decoration: const InputDecoration(
+                        labelText: 'Area',
                       ),
-                      icon: const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: _orange,
-                      ),
-                      decoration: _inputDecoration(
-                        label: 'Ward',
-                      ),
-                      items: AuthStore.wardAreas.keys
+                      items: (
+                          AuthStore.wardAreas[selectedWard] ?? const []
+                      )
                           .map(
-                            (ward) => DropdownMenuItem(
-                          value: ward,
+                            (area) => DropdownMenuItem(
+                          value: area,
                           child: Text(
-                            'Ward $ward',
+                            area,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       )
                           .toList(),
                       validator: (value) => value == null
-                          ? 'Please select your ward'
+                          ? 'Please select your area'
                           : null,
-                      onChanged: (ward) {
+                      onChanged: (area) {
                         setState(() {
-                          selectedWard = ward;
-
-                          // Reset the area when the ward changes.
-                          selectedCommunityArea = null;
+                          selectedCommunityArea = area;
                         });
                       },
                     ),
+                  ],
 
-                    // Area dropdown appears after selecting a ward.
-                    if (selectedWard != null) ...[
-                      const SizedBox(height: 14),
+                  const SizedBox(height: 14),
 
-                      DropdownButtonFormField<String>(
-                        initialValue: selectedCommunityArea,
-                        isExpanded: true,
-                        style: const TextStyle(
-                          color: _darkText,
-                          fontSize: 14,
+                  // Location permission information
+                  if (_locationPermissionGranted)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.green.shade200,
                         ),
-                        icon: const Icon(
-                          Icons.keyboard_arrow_down_rounded,
-                          color: _orange,
-                        ),
-                        decoration: _inputDecoration(
-                          label: 'Area',
-                        ),
-                        items: (
-                            AuthStore.wardAreas[selectedWard] ?? const []
-                        )
-                            .map(
-                              (area) => DropdownMenuItem(
-                            value: area,
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(
+                            Icons.my_location,
+                            color: Colors.green,
+                          ),
+                          SizedBox(width: 8),
+                          Expanded(
                             child: Text(
-                              area,
-                              overflow: TextOverflow.ellipsis,
+                              'Location permission is enabled. '
+                                  'You can use precise location or choose '
+                                  'a point on the map.',
+                              style: TextStyle(
+                                color: Colors.green,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
-                        )
-                            .toList(),
-                        validator: (value) => value == null
-                            ? 'Please select your area'
-                            : null,
-                        onChanged: (area) {
-                          setState(() {
-                            selectedCommunityArea = area;
-                          });
-                        },
+                        ],
+                      ),
+                    ),
+
+                  // Location field and map button
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _field(
+                          controller: locationController,
+                          label: 'Location',
+                          readOnly: true,
+                          onTap: _openLocationPicker,
+                          validator: (value) {
+                            if (value == null ||
+                                value.trim().isEmpty) {
+                              return 'Please choose a location on the map';
+                            }
+
+                            return null;
+                          },
+                          hint:
+                          'Tap to search for a road or choose a point on the map',
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        tooltip: 'Choose location on map',
+                        onPressed: _openLocationPicker,
+                        icon: const Icon(
+                          Icons.map_outlined,
+                          color: Colors.red,
+                        ),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.red.shade50,
+                        ),
                       ),
                     ],
+                  ),
 
-                    const SizedBox(height: 14),
+                  const SizedBox(height: 14),
 
-                    // Location permission information
-                    if (_locationPermissionGranted)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF0F9F1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: const Color(0xFFC6E5CB),
+                  // Additional information
+                  _field(
+                    controller: additionalInfoController,
+                    label: 'Additional Information',
+                    hint: 'Add any additional details to your report',
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // Image upload
+                  OutlinedButton.icon(
+                    onPressed: _chooseImage,
+                    icon: const Icon(Icons.add_a_photo_outlined),
+                    label: Text(
+                      selectedImage == null
+                          ? 'Add Image'
+                          : 'Image selected: ${selectedImage!.name}',
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Cancel and submit buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(52),
                           ),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(
-                              Icons.my_location,
-                              color: Color(0xFF38834A),
-                            ),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Location permission is enabled. '
-                                    'You can use precise location or choose '
-                                    'a point on the map.',
-                                style: TextStyle(
-                                  color: Color(0xFF38834A),
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ],
+                          child: const Text('Cancel'),
                         ),
                       ),
-
-                    // Location field and map button
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _field(
-                            controller: locationController,
-                            label: 'Location',
-                            readOnly: true,
-                            onTap: _openLocationPicker,
-                            validator: (value) {
-                              if (value == null ||
-                                  value.trim().isEmpty) {
-                                return 'Please choose a location on the map';
-                              }
-
-                              return null;
-                            },
-                            hint:
-                            'Tap to search for a road or choose a point on the map',
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _submit,
+                          style: ElevatedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(52),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          tooltip: 'Choose location on map',
-                          onPressed: _openLocationPicker,
-                          icon: const Icon(
-                            Icons.map_outlined,
-                            color: _orange,
-                          ),
-                          style: IconButton.styleFrom(
-                            backgroundColor: _lightOrange,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              side: const BorderSide(
-                                color: _borderColor,
-                              ),
-                            ),
-                            padding: const EdgeInsets.all(14),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    // Additional information
-                    _field(
-                      controller: additionalInfoController,
-                      label: 'Additional Information',
-                      hint: 'Add any additional details to your report',
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    // Image upload
-                    OutlinedButton.icon(
-                      onPressed: _chooseImage,
-                      icon: const Icon(
-                        Icons.add_a_photo_outlined,
-                        color: _orange,
-                      ),
-                      label: Text(
-                        selectedImage == null
-                            ? 'Add Image'
-                            : 'Image selected: ${selectedImage!.name}',
-                        style: const TextStyle(
-                          color: _orange,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(50),
-                        foregroundColor: _orange,
-                        backgroundColor: _lightOrange.withValues(
-                          alpha: 0.35,
-                        ),
-                        side: const BorderSide(
-                          color: _borderColor,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          child: const Text('Submit'),
                         ),
                       ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Cancel and submit buttons
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size.fromHeight(52),
-                              foregroundColor: _orange,
-                              side: const BorderSide(
-                                color: _orange,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            child: const Text(
-                              'Cancel',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: _submit,
-                            style: ElevatedButton.styleFrom(
-                              minimumSize: const Size.fromHeight(52),
-                              backgroundColor: _orange,
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            child: const Text(
-                              'Submit',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
         ),
+      ),
 
-        // Bottom navigation
-        bottomNavigationBar: BottomNavigationBar(
-          backgroundColor: pagePrimaryColor(
-            isSupervisor: isSupervisor,
-          ),
-          selectedItemColor: Colors.white,
-          unselectedItemColor: Colors.white70,
-          currentIndex: 1,
-          onTap: (index) {
-            if (index == 0) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const StatusPage(),
-                ),
-              );
-            } else {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const HelpPage(),
-                ),
-              );
-            }
-          },
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.assignment),
-              label: 'Profile',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.help),
-              label: 'Help',
-            ),
-          ],
+      // Bottom navigation
+      bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: pagePrimaryColor(
+          isSupervisor: isSupervisor,
         ),
+        currentIndex: 1,
+        onTap: (index) {
+          if (index == 0) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const StatusPage(),
+              ),
+            );
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const HelpPage(),
+              ),
+            );
+          }
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.assignment),
+            label: 'Profile',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.help),
+            label: 'Help',
+          ),
+        ],
       ),
     );
   }
@@ -587,75 +457,12 @@ class _ReportingPageState extends State<ReportingPage> {
       validator: validator,
       readOnly: readOnly,
       onTap: onTap,
-      style: const TextStyle(
-        color: _darkText,
-        fontSize: 14,
-      ),
-      decoration: _inputDecoration(
-        label: label,
-        hint: hint,
-      ),
-    );
-  }
-
-  InputDecoration _inputDecoration({
-    required String label,
-    String? hint,
-    String? errorText,
-  }) {
-    return InputDecoration(
-      labelText: label,
-      hintText: hint,
-      errorText: errorText,
-      labelStyle: const TextStyle(
-        color: _secondaryText,
-        fontSize: 14,
-      ),
-      floatingLabelStyle: const TextStyle(
-        color: _orange,
-        fontWeight: FontWeight.w600,
-      ),
-      hintStyle: const TextStyle(
-        color: _secondaryText,
-        fontSize: 12,
-      ),
-      filled: true,
-      fillColor: _cream,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 16,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(
-          color: _borderColor,
-        ),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(
-          color: _orange,
-          width: 1.6,
-        ),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(
-          color: Colors.redAccent,
-        ),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(
-          color: Colors.redAccent,
-          width: 1.6,
-        ),
-      ),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(
-          color: _borderColor,
-        ),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        filled: true,
+        fillColor: Colors.white,
+        border: const OutlineInputBorder(),
       ),
     );
   }
@@ -700,38 +507,20 @@ class _ReportingPageState extends State<ReportingPage> {
   Future<void> _chooseImage() async {
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(20),
-        ),
-      ),
       builder: (sheetContext) => SafeArea(
         child: Wrap(
           children: [
             ListTile(
-              leading: const Icon(
-                Icons.photo_library_outlined,
-                color: _orange,
-              ),
-              title: const Text(
-                'Choose from gallery',
-                style: TextStyle(color: _darkText),
-              ),
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from gallery'),
               onTap: () => Navigator.pop(
                 sheetContext,
                 ImageSource.gallery,
               ),
             ),
             ListTile(
-              leading: const Icon(
-                Icons.camera_alt_outlined,
-                color: _orange,
-              ),
-              title: const Text(
-                'Take a photo',
-                style: TextStyle(color: _darkText),
-              ),
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Take a photo'),
               onTap: () => Navigator.pop(
                 sheetContext,
                 ImageSource.camera,
@@ -755,39 +544,237 @@ class _ReportingPageState extends State<ReportingPage> {
     }
   }
 
+  // Convert the selected area into the backend's AreaId.
+  int? _getSelectedAreaId() {
+    if (selectedWard == null || selectedCommunityArea == null) {
+      return null;
+    }
+
+    // Area names and IDs from LocationSeedData.cs.
+    const areaIds = <String, int>{
+      // Ward 58
+      'Brake Village': 1,
+      'Canelands': 2,
+      'Casuarina': 3,
+      'Desainagar': 4,
+      'Ghandinagar': 5,
+      'Hammonds Farm': 6,
+      'King Shaka International Airport zone': 7,
+      'La Mercy': 8,
+      'Lungelani': 9,
+      'Pholani': 10,
+      'Sastri Circle / Belgate': 11,
+      'Thuthukani': 12,
+      'Tongaat Beach / Westbrook': 13,
+
+      // Ward 61
+      'Belvedere (including Belvedere North)': 14, //Changed
+      'Buffelsdale': 15,
+      'Chelmsford Heights': 16,
+      'Emona Sunhill': 17,
+      'Gwalas Farm': 18,
+      'Mithangar': 19,
+      'Plain Street': 20,
+      'Sandfields': 21,
+      'Umbhayi': 22,
+      'Watsonia': 23,
+
+      // Ward 62
+      'Burbreeze': 24,
+      'Fairbreeze': 25,
+      'Flamingo Heights': 26,
+      'Gandhi’s Hill': 27,
+      'Hambanathi': 28,
+      'Lauriston': 29,
+      'Magwaveni': 30, // Changed
+      'Maidstone Village': 31,
+      'OThongathi CBD / Tongaat Central': 32,
+      'Riverside AH': 33,
+      'Tongaat Industrial / Trurolands': 34,
+      'Vanrova': 35,
+    };
+
+    return areaIds[selectedCommunityArea];
+  }
+
+  // Convert the selected category to the backend enum name.
+  String _getBackendIssueCategory() {
+    switch (selectedIssueType) {
+      case 'Water and Sanitation':
+        return 'WaterAndSanitation';
+      case 'Roads and Stormwater':
+        return 'RoadsAndStormwater';
+      case 'Electricity':
+        return 'Electricity';
+      case 'Waste Management':
+        return 'WasteManagement';
+      default:
+        throw StateError('No valid issue category selected.');
+    }
+  }
+
+
+  // Convert the selected issue to the backend enum name.
+  String _getBackendIssueType() {
+    switch (selectedIssue) {
+      case 'Burst Pipe':
+        return 'BurstPipe';
+      case 'Leaking Pipe':
+        return 'LeakingPipe';
+      case 'No Water Supply':
+        return 'NoWaterSupply';
+      case 'Low Water Pressure':
+        return 'LowWaterPressure';
+      case 'Blocked Sewer or Manhole':
+        return 'BlockedSewerOrManhole';
+      case 'Sewage Spill':
+        return 'SewageSpill';
+      case 'Discolored or Dirty Water':
+        return 'DiscoloredOrDirtyWater';
+      case 'Pothole':
+        return 'Pothole';
+      case 'Sinkhole':
+        return 'Sinkhole';
+      case 'Blocked Storm Drain':
+        return 'BlockedStormDrain';
+      case 'Flooded Road':
+        return 'FloodedRoad';
+      case 'Traffic Light Not Working':
+        return 'TrafficLightNotWorking';
+      case 'Missing or Damaged Road Sign':
+        return 'MissingOrDamagedRoadSign';
+      case 'Faded Road Markings':
+        return 'FadedRoadMarkings';
+      case 'Street Light Not Working':
+        return 'StreetLightNotWorking';
+      case 'Street Light On During Day':
+        return 'StreetLightOnDuringDay';
+      case 'Power Outage':
+        return 'PowerOutage';
+      case 'Exposed Or Damaged Cable':
+        return 'ExposedOrDamagedCable';
+      case 'Damaged Electrical Box':
+        return 'DamagedElectricalBox';
+      case 'Missed Bin Collection':
+        return 'MissedBinCollection';
+      case 'Illegal Dumping':
+        return 'IllegalDumping';
+      case 'Overflowing Public Bin':
+        return 'OverflowingPublicBin';
+      default:
+        throw StateError('No valid issue type selected.');
+    }
+  }
+
+
+  // Read the selected map coordinates for the backend request.
+  LatLng? _getSelectedCoordinates() {
+    return _parseCoordinates(pinLocationController.text);
+  }
+
+
   // Submit the report
   Future<void> _submit() async {
     if (!formKey.currentState!.validate()) return;
 
-    final report = ReportStore.addReport(
-      issueType: selectedIssueType!,
-      issue: selectedIssue!,
-      area: 'Ward $selectedWard - $selectedCommunityArea',
-      description: additionalInfoController.text,
-      pinLocation: pinLocationController.text,
-      locationAddress: locationController.text,
-      imagePath: selectedImage?.path ?? '',
-      isOfflineSubmission: !ReportStore.isOnline,
-    );
+    final areaId = _getSelectedAreaId();
+    if (areaId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a valid community area.'),
+        ),
+      );
+      return;
+    }
 
-    if (report == null) return;
-    if (!mounted) return;
+    final coordinates = _getSelectedCoordinates();
+    if (coordinates == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Please select a point on the map or use your current location.',
+          ),
+        ),
+      );
+      return;
+    }
 
-    final message = report.storageType == 'offline'
-        ? 'Report saved offline. It will sync when the internet is available.'
-        : 'Report logged and sent successfully.';
+    final location = locationController.text.trim();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    try {
+      await AuthStore.withAccessToken(
+            (api, accessToken) => api.createReport(
+          accessToken: accessToken,
+          issueCategory: _getBackendIssueCategory(),
+          issueType: _getBackendIssueType(),
+          areaId: areaId,
+          location: location,
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+          description: additionalInfoController.text.trim(),
+          imagePath: selectedImage?.path,
+        ),
+      );
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const StatusPage(),
-      ),
-    );
+      final report = ReportStore.addReport(
+        issueType: selectedIssueType!,
+        issue: selectedIssue!,
+        area: 'Ward $selectedWard - $selectedCommunityArea',
+        description: additionalInfoController.text,
+        pinLocation: pinLocationController.text,
+        locationAddress: locationController.text,
+        imagePath: selectedImage?.path ?? '',
+        isOfflineSubmission: false,
+      );
+
+      if (report == null) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('The report was sent, but could not be saved locally.'),
+          ),
+        );
+        return;
+      }
+
+      await ReportStore.markReportSubmitted(report);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Report submitted successfully.'),
+        ),
+      );
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const StatusPage(),
+        ),
+      );
+    } on AuthApiException catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.message),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Could not submit the report. Please check your connection and try again.',
+          ),
+        ),
+      );
+    }
   }
+
 
   @override
   void dispose() {
@@ -876,267 +863,168 @@ class _LocationPickerDialogState
         .clamp(320.0, 720.0)
         .toDouble();
 
-    return Theme(
-      data: Theme.of(context).copyWith(
-        colorScheme: Theme.of(context).colorScheme.copyWith(
-          primary: _orange,
-          secondary: _orange,
-          surface: Colors.white,
-          onSurface: _darkText,
-        ),
-      ),
-      child: Dialog(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(22),
-          side: const BorderSide(
-            color: _borderColor,
-          ),
-        ),
-        child: SizedBox(
-          width: screenSize.width - 48,
-          height: dialogHeight,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Choose a location',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: _darkText,
-                        ),
+    return Dialog(
+      insetPadding: const EdgeInsets.all(12),
+      child: SizedBox(
+        width: screenSize.width - 48,
+        height: dialogHeight,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Choose a location',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
-                    ),
-                    IconButton(
-                      tooltip: 'Close map',
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(
-                        Icons.close,
-                        color: _secondaryText,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 8),
-
-                // Map
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: MapLibreMap(
-                      styleString: _mapStyle,
-                      myLocationEnabled:
-                      _locationPermissionGranted,
-                      initialCameraPosition: CameraPosition(
-                        target: widget.initialLocation ??
-                            _southAfricaCenter,
-                        zoom: widget.initialLocation == null
-                            ? 5
-                            : 15,
-                      ),
-                      onMapCreated: (controller) {
-                        _mapController = controller;
-                      },
-                      onStyleLoadedCallback: _onStyleLoaded,
-                      onMapClick: (_, coordinates) {
-                        setState(() {
-                          _selectedLocation = coordinates;
-                          _searchError = null;
-                        });
-
-                        unawaited(_updateMapMarker());
-                      },
                     ),
                   ),
-                ),
+                  IconButton(
+                    tooltip: 'Close map',
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
 
-                // Current location button
+              const SizedBox(height: 8),
+
+              // Map
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: MapLibreMap(
+                    styleString: _mapStyle,
+                    myLocationEnabled:
+                    _locationPermissionGranted,
+                    initialCameraPosition: CameraPosition(
+                      target: widget.initialLocation ??
+                          _southAfricaCenter,
+                      zoom: widget.initialLocation == null
+                          ? 5
+                          : 15,
+                    ),
+                    onMapCreated: (controller) {
+                      _mapController = controller;
+                    },
+                    onStyleLoadedCallback: _onStyleLoaded,
+                    onMapClick: (_, coordinates) {
+                      setState(() {
+                        _selectedLocation = coordinates;
+                        _searchError = null;
+                      });
+
+                      unawaited(_updateMapMarker());
+                    },
+                  ),
+                ),
+              ),
+
+              // Current location button
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: _isLocating || _isSearching
+                      ? null
+                      : _moveToCurrentLocation,
+                  icon: const Icon(Icons.my_location),
+                  label: Text(
+                    _isLocating
+                        ? 'Finding location...'
+                        : _locationPermissionGranted
+                        ? 'Use current location'
+                        : 'Enable precise location',
+                  ),
+                ),
+              ),
+
+              if (_locationServicesDisabled)
                 Align(
                   alignment: Alignment.centerRight,
-                  child: TextButton.icon(
-                    onPressed: _isLocating || _isSearching
+                  child: TextButton(
+                    onPressed: _openDeviceLocationSettings,
+                    child: const Text(
+                      'Open device location settings',
+                    ),
+                  ),
+                ),
+
+              const Text(
+                'Search and address lookup use OpenStreetMap. '
+                    'Your search or coordinates are sent to its services. '
+                    '© OpenStreetMap contributors.',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.black54,
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              Text(
+                _selectedLocation == null
+                    ? 'Search for a road, or tap the map to drop a pin.'
+                    : 'Selected: ${_formatCoordinates(_selectedLocation)}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+
+              const SizedBox(height: 8),
+
+              // Search for an address or road
+              TextField(
+                controller: _addressController,
+                textInputAction: TextInputAction.search,
+                onSubmitted: (_) {
+                  if (!_isSearching && !_isLocating) {
+                    _searchRoad();
+                  }
+                },
+                decoration: InputDecoration(
+                  labelText: 'Road name, address, or landmark',
+                  hintText: 'For example, a road and suburb',
+                  border: const OutlineInputBorder(),
+                  errorText: _searchError,
+                  suffixIcon: IconButton(
+                    tooltip: 'Search map',
+                    onPressed:
+                    _isSearching || _isLocating
                         ? null
-                        : _moveToCurrentLocation,
-                    icon: const Icon(
-                      Icons.my_location,
-                      color: _orange,
-                    ),
-                    label: Text(
-                      _isLocating
-                          ? 'Finding location...'
-                          : _locationPermissionGranted
-                          ? 'Use current location'
-                          : 'Enable precise location',
-                      style: const TextStyle(
-                        color: _orange,
-                        fontWeight: FontWeight.w600,
+                        : _searchRoad,
+                    icon: _isSearching
+                        ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
                       ),
-                    ),
+                    )
+                        : const Icon(Icons.search),
                   ),
                 ),
+              ),
 
-                if (_locationServicesDisabled)
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: _openDeviceLocationSettings,
-                      child: const Text(
-                        'Open device location settings',
-                        style: TextStyle(
-                          color: _orange,
-                        ),
-                      ),
-                    ),
-                  ),
+              const SizedBox(height: 12),
 
-                const Text(
-                  'Search and address lookup use OpenStreetMap. '
-                      'Your search or coordinates are sent to its services. '
-                      '©️ OpenStreetMap contributors.',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: _secondaryText,
+              FilledButton(
+                onPressed: _selectedLocation == null &&
+                    _addressController.text.trim().isEmpty
+                    ? null
+                    : () => Navigator.pop(
+                  context,
+                  _LocationSelection(
+                    address:
+                    _addressController.text.trim(),
+                    location: _selectedLocation,
                   ),
                 ),
-
-                const SizedBox(height: 8),
-
-                Text(
-                  _selectedLocation == null
-                      ? 'Search for a road, or tap the map to drop a pin.'
-                      : 'Selected: ${_formatCoordinates(_selectedLocation)}',
-                  style: const TextStyle(
-                    color: _darkText,
-                    fontSize: 12,
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                // Search for an address or road
-                TextField(
-                  controller: _addressController,
-                  textInputAction: TextInputAction.search,
-                  style: const TextStyle(
-                    color: _darkText,
-                    fontSize: 14,
-                  ),
-                  onSubmitted: (_) {
-                    if (!_isSearching && !_isLocating) {
-                      _searchRoad();
-                    }
-                  },
-                  decoration: InputDecoration(
-                    labelText: 'Road name, address, or landmark',
-                    hintText: 'For example, a road and suburb',
-                    labelStyle: const TextStyle(
-                      color: _secondaryText,
-                    ),
-                    floatingLabelStyle: const TextStyle(
-                      color: _orange,
-                    ),
-                    hintStyle: const TextStyle(
-                      color: _secondaryText,
-                      fontSize: 12,
-                    ),
-                    filled: true,
-                    fillColor: _cream,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 14,
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: _borderColor,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: _orange,
-                        width: 1.6,
-                      ),
-                    ),
-                    errorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: Colors.redAccent,
-                      ),
-                    ),
-                    focusedErrorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: Colors.redAccent,
-                        width: 1.6,
-                      ),
-                    ),
-                    errorText: _searchError,
-                    suffixIcon: IconButton(
-                      tooltip: 'Search map',
-                      onPressed:
-                      _isSearching || _isLocating
-                          ? null
-                          : _searchRoad,
-                      icon: _isSearching
-                          ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: _orange,
-                        ),
-                      )
-                          : const Icon(
-                        Icons.search,
-                        color: _orange,
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 12),
-
-                FilledButton(
-                  onPressed: _selectedLocation == null &&
-                      _addressController.text.trim().isEmpty
-                      ? null
-                      : () => Navigator.pop(
-                    context,
-                    _LocationSelection(
-                      address:
-                      _addressController.text.trim(),
-                      location: _selectedLocation,
-                    ),
-                  ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _orange,
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: _borderColor,
-                    disabledForegroundColor: Colors.white,
-                    minimumSize: const Size.fromHeight(50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Use this location',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+                child: const Text('Use this location'),
+              ),
+            ],
           ),
         ),
       ),
@@ -1170,7 +1058,7 @@ class _LocationPickerDialogState
       CircleOptions(
         geometry: location,
         circleRadius: 9,
-        circleColor: '#C94F1B',
+        circleColor: '#E53935',
         circleStrokeColor: '#FFFFFF',
         circleStrokeWidth: 2,
       ),

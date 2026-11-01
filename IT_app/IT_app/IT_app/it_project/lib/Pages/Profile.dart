@@ -59,7 +59,6 @@ class _ProfilePageState extends State<ProfilePage> {
       backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: pagePrimaryColor(isSupervisor: isSupervisor),
-        elevation: 0,
         title: const Text(
           'Profile',
           style: TextStyle(
@@ -111,7 +110,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       child: Text(
                         displayName,
                         style: const TextStyle(
-                          color: Color(0xFF292524),
+                          color: Colors.white,
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
                         ),
@@ -119,10 +118,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     IconButton(
                       tooltip: 'Edit profile',
-                      icon: const Icon(
-                        Icons.edit,
-                        color: Color(0xFF292524),
-                      ),
+                      icon: const Icon(Icons.edit, color: Colors.white),
                       onPressed: () async {
                         await Navigator.push(
                           context,
@@ -173,7 +169,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 const Text(
                   'Your Recent Reports',
                   style: TextStyle(
-                    color: Color(0xFF292524),
+                    color: Colors.white,
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
@@ -182,10 +178,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 if (reports.isEmpty)
                   const Text(
                     'You have not submitted any reports yet.',
-                    style: TextStyle(
-                      color: Color(0xFF78716C),
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Colors.white),
                   )
                 else
                   ...reports.map(_reportCard),
@@ -197,7 +190,6 @@ class _ProfilePageState extends State<ProfilePage> {
       floatingActionButton: FloatingActionButton(
         tooltip: 'Back to top',
         backgroundColor: pagePrimaryColor(isSupervisor: isSupervisor),
-        elevation: 2,
         onPressed: () => scrollController.animateTo(
           0,
           duration: const Duration(milliseconds: 500),
@@ -221,18 +213,11 @@ class _ProfilePageState extends State<ProfilePage> {
       onPressed: () =>
           Navigator.push(context, MaterialPageRoute(builder: (_) => page)),
       icon: Icon(icon),
-      label: Text(
-        label,
-        style: const TextStyle(fontWeight: FontWeight.w600),
-      ),
+      label: Text(label),
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFFC94F1B),
         foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
     );
   }
@@ -240,54 +225,23 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _reportCard(ReportRequest report) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.white.withValues(alpha: 0.95),
-      elevation: 2,
-      shadowColor: Colors.black.withValues(alpha: 0.08),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(
-          color: Color(0xFFE8C7B8),
-          width: 0.8,
-        ),
-      ),
-      child: Theme(
-        data: Theme.of(context).copyWith(
-          dividerColor: Colors.transparent,
-          colorScheme: Theme.of(context).colorScheme.copyWith(
-            primary: const Color(0xFFC94F1B),
+      child: ExpansionTile(
+        title: Text('Report #${report.id} - ${report.issueType}'),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        children: [
+          _reportDetail('Status', report.status),
+          _reportDetail(
+            'Date Submitted',
+            report.createdAt.toLocal().toString().split('.').first,
           ),
-        ),
-        child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 6,
+          _reportDetail('Specific Issue', report.issue),
+          _reportDetail('Location', report.locationAddress),
+          _reportDetail(
+            'Additional Information',
+            report.description.isEmpty ? 'None' : report.description,
           ),
-          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          iconColor: const Color(0xFFC94F1B),
-          collapsedIconColor: const Color(0xFF78716C),
-          title: Text(
-            'Report #${report.id} - ${report.issueType}',
-            style: const TextStyle(
-              color: Color(0xFF292524),
-              fontWeight: FontWeight.bold,
-              fontSize: 15,
-            ),
-          ),
-          children: [
-            _reportDetail('Status', report.status),
-            _reportDetail(
-              'Date Submitted',
-              report.createdAt.toLocal().toString().split('.').first,
-            ),
-            _reportDetail('Specific Issue', report.issue),
-            _reportDetail('Location', report.locationAddress),
-            _reportDetail(
-              'Additional Information',
-              report.description.isEmpty ? 'None' : report.description,
-            ),
-            _reportDetail('Sync', report.syncStatus),
-          ],
-        ),
+          _reportDetail('Sync', report.syncStatus),
+        ],
       ),
     );
   }
@@ -297,25 +251,7 @@ class _ProfilePageState extends State<ProfilePage> {
       padding: const EdgeInsets.only(top: 8),
       child: Align(
         alignment: Alignment.centerLeft,
-        child: RichText(
-          text: TextSpan(
-            style: const TextStyle(
-              color: Color(0xFF78716C),
-              fontSize: 14,
-              height: 1.4,
-            ),
-            children: [
-              TextSpan(
-                text: '$label: ',
-                style: const TextStyle(
-                  color: Color(0xFFC94F1B),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              TextSpan(text: value),
-            ],
-          ),
-        ),
+        child: Text('$label: $value'),
       ),
     );
   }
@@ -340,19 +276,8 @@ class _InfoCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.92),
+        color: Colors.white.withValues(alpha: 0.82),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFE8C7B8),
-          width: 0.8,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -370,7 +295,7 @@ class _InfoCard extends StatelessWidget {
           Text(
             value,
             style: const TextStyle(
-              color: Color(0xFF292524),
+              color: Color(0xFF1F1F1F),
               fontSize: 18,
               fontWeight: FontWeight.w600,
             ),

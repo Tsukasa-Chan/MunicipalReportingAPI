@@ -212,6 +212,64 @@ class AuthApi {
     return _decodeJsonObject(response);
   }
 
+  // CREATE REPORT
+  // Backend: POST /api/Reports
+  // Uses multipart form data because the backend accepts an optional image.
+  Future<Map<String, dynamic>> createReport({
+    required String accessToken,
+    required String issueCategory,
+    required String issueType,
+    required int areaId,
+    required String location,
+    required double latitude,
+    required double longitude,
+    String description = '',
+    String? imagePath,
+  }) async {
+    // CHANGE: MultipartRequest allows the report and image to be sent together.
+    final request = http.MultipartRequest(
+      'POST',
+      _endpoint('/api/Reports'),
+    );
+
+    // CHANGE: Do not set Content-Type to application/json for multipart data.
+    request.headers.addAll({
+      'Accept': 'application/json',
+      'Authorization': 'Bearer $accessToken',
+    });
+
+    request.fields.addAll({
+      'IssueCategory': issueCategory,
+      'IssueType': issueType,
+      'AreaId': areaId.toString(),
+      'Location': location,
+      'Latitude': latitude.toString(),
+      'Longitude': longitude.toString(),
+      'Description': description,
+    });
+
+    // CHANGE: Attach the image only when the user selected one.
+    if (imagePath != null && imagePath.trim().isNotEmpty) {
+      request.files.add(
+        await http.MultipartFile.fromPath('Image', imagePath),
+      );
+    }
+
+    // CHANGE: Reuse the existing HTTP client, timeout and error handling.
+    final response = await _send(
+          () async => http.Response.fromStream(
+        await _client.send(request),
+      ),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _exceptionFromResponse(response);
+    }
+
+    return _decodeJsonObject(response);
+  }
+
+
   // UPDATE NAME
   // Backend: PUT /api/Users/profile
   Future<Map<String, dynamic>> updateFullName({
@@ -593,26 +651,4 @@ class AuthApi {
 
     return messages;
   }
-
-  // get - Used for fetching lists, the supervisor reports
-  Future<List<dynamic>> getRaw(String path, {required String accessToken}) async {
-    final response = await _send(
-      () => _client.get(
-        _endpoint(path),
-        headers: _headers(accessToken: accessToken),
-      ),
-    );
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw _exceptionFromResponse(response);
-    }
-
-    final body = response.body.trim();
-    if (body.isEmpty) return [];
-
-    final decoded = jsonDecode(body);
-    if (decoded is List) return decoded;
-    return [];
-  }
-
 }
