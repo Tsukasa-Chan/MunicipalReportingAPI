@@ -1,7 +1,5 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
-
 import 'ContactUs.dart';
 import 'Help.dart';
 import 'OtherReports.dart';
@@ -16,19 +14,22 @@ import 'area_widgets.dart';
 import 'chat_page.dart';
 // The client that talks to the server, plus the issue models.
 import 'issues_api.dart';
-
+// App colour scheme.
+const Color appOrange = Color(0xFFC94F1B);
+const Color appBackground = Color(0xFFFFF8F4);
+const Color appGradientEnd = Color(0xFFFFE9DC);
+const Color appDark = Color(0xFF292524);
+const Color appMuted = Color(0xFF78716C);
+const Color appBorder = Color(0xFFE8C7B8);
 class HomePage extends StatefulWidget {
   // HomePage can optionally be given a fake server (issuesApi); normally it is null.
   const HomePage({super.key, this.issuesApi});
-
   // Lets tests supply a fake server. Normally null.
   // Holds the optional server client; tests pass a fake one here.
   final IssuesApi? issuesApi;
-
   @override
   State<HomePage> createState() => _HomePageState();
 }
-
 class _HomePageState extends State<HomePage> {
   final locationController = TextEditingController();
   final addInfoController = TextEditingController();
@@ -43,14 +44,12 @@ class _HomePageState extends State<HomePage> {
     'Other',
   ];
   final formKey = GlobalKey<FormState>();
-
   String? choice;
   String location = '';
   String? additionalInfo;
   late final String selectedArea;
   // Loads this user's area issues and stats; stays null if the user has no area.
   AreaFeedController? _feed;
-
   @override
   void initState() {
     super.initState();
@@ -58,7 +57,6 @@ class _HomePageState extends State<HomePage> {
     final user = AuthStore.currentUser;
     // Remember the area name to show on screen, or 'Not set'.
     selectedArea = user?.ward ?? 'Not set';
-
     // Issues and statistics come from the backend for the user's area.
     // Get the user's area id (the server needs the id, not the name).
     final areaId = user?.areaId;
@@ -70,33 +68,23 @@ class _HomePageState extends State<HomePage> {
         ..refresh();
     }
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: appBackground,
       appBar: AppBar(
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'FIX MY CITY',
-              style: TextStyle(color: Colors.white, fontSize: 30),
-            ),
-            const SizedBox(width: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.all(Radius.circular(6)),
-              child: Image.asset(
-                'lib/img/app logo.png',
-                width: 42,
-                height: 42,
-                fit: BoxFit.cover,
-              ),
-            ),
-          ],
+        title: const Text(
+          'FIX MY AREA',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 25,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1,
+          ),
         ),
         centerTitle: true,
-        backgroundColor: Colors.red,
+        elevation: 0,
+        backgroundColor: appOrange,
         actions: [
           // Opens the AI assistant (help, area questions, guided reporting).
           IconButton(
@@ -122,33 +110,62 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       drawer: Drawer(
+        backgroundColor: appBackground,
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
             DrawerHeader(
-              decoration: const BoxDecoration(color: Colors.red),
-              child: Row(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    appOrange,
+                    Color(0xFFE87542),
+                  ],
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(
-                      'lib/img/app logo.png',
-                      width: 56,
-                      height: 56,
-                      fit: BoxFit.cover,
+                  const CircleAvatar(
+                    radius: 30,
+                    backgroundColor: Colors.white,
+                    backgroundImage: AssetImage('lib/img/app logo.png'),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${AuthStore.currentUser?.name ?? ''} '
+                        '${AuthStore.currentUser?.surname ?? ''}'.trim(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Menu',
-                    style: TextStyle(color: Colors.white, fontSize: 25),
+                  const SizedBox(height: 4),
+                  Text(
+                    AuthStore.currentUser?.email ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text('Settings'),
+              leading: const Icon(Icons.settings, color: appOrange),
+              title: const Text(
+                'Settings',
+                style: TextStyle(
+                  color: appDark,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               onTap: () {
                 Navigator.push(
                   context,
@@ -157,8 +174,14 @@ class _HomePageState extends State<HomePage> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.phone),
-              title: const Text('Contact Us'),
+              leading: const Icon(Icons.phone, color: appOrange),
+              title: const Text(
+                'Contact Us',
+                style: TextStyle(
+                  color: appDark,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               onTap: () {
                 Navigator.push(
                   context,
@@ -168,17 +191,35 @@ class _HomePageState extends State<HomePage> {
             ),
             ListTile(
               // Menu icon: a location pin.
-              leading: const Icon(Icons.location_on_outlined),
+              leading: const Icon(
+                Icons.location_on_outlined,
+                color: appOrange,
+              ),
               // Menu label (renamed from 'My Ward' to 'My Area').
-              title: const Text('My Area'),
+              title: const Text(
+                'My Area',
+                style: TextStyle(
+                  color: appDark,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               // Show the user's area name under the label.
-              subtitle: Text(selectedArea),
+              subtitle: Text(
+                selectedArea,
+                style: const TextStyle(color: appMuted),
+              ),
               // When tapped, open the area's issue list.
               onTap: _openMyWard,
             ),
             ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text('Logout'),
+              leading: const Icon(Icons.logout, color: appOrange),
+              title: const Text(
+                'Logout',
+                style: TextStyle(
+                  color: appDark,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               onTap: () {
                 AuthStore.logout();
                 Navigator.pushAndRemoveUntil(
@@ -196,11 +237,13 @@ class _HomePageState extends State<HomePage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFF5F5F5), Color(0xFFF5F5F5)],
+            colors: [appBackground, appGradientEnd],
           ),
         ),
         // Wrap the page so the user can pull down to refresh.
         child: RefreshIndicator(
+          color: appOrange,
+          backgroundColor: Colors.white,
           // What happens when the user pulls down.
           onRefresh: () async {
             // Reload the issues and stats (does nothing if there is no area).
@@ -228,8 +271,11 @@ class _HomePageState extends State<HomePage> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: 1,
-        backgroundColor: Colors.red,
-        selectedItemColor: Colors.white,
+        backgroundColor: Colors.white,
+        elevation: 12,
+        selectedItemColor: appOrange,
+        unselectedItemColor: appMuted,
+        type: BottomNavigationBarType.fixed,
         onTap: (index) {
           if (index == 0) {
             Navigator.push(
@@ -268,7 +314,6 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-
   void _openMyWard() {
     Navigator.pop(context);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -289,14 +334,12 @@ class _HomePageState extends State<HomePage> {
       );
     });
   }
-
   // Builds the cards for the Home page from the server data.
   List<Widget> _buildAreaSections() {
     // Get the loader (null if the user has no area).
     final feed = _feed;
     // No area: show the 'no area' message card instead of data.
     if (feed == null) return [_buildNoAreaCard()];
-
     // Count this user's reports that are still only saved on the phone.
     // Reports this user made that are still only stored on the device.
     // Start from all of this user's reports,
@@ -310,7 +353,6 @@ class _HomePageState extends State<HomePage> {
     )
     // Count how many are left.
         .length;
-
     // Return the two cards for the Home page.
     return [
       // The dashboard card with the stats.
@@ -337,7 +379,6 @@ class _HomePageState extends State<HomePage> {
       ),
     ];
   }
-
   // The message card for users who have no area.
   Widget _buildNoAreaCard() {
     // A simple white box shown when the user has no area.
@@ -352,17 +393,28 @@ class _HomePageState extends State<HomePage> {
         color: Colors.white,
         // ...and rounded corners.
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: appBorder),
+        boxShadow: [
+          BoxShadow(
+            color: appOrange.withOpacity(0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
       // The message text.
       child: const Text(
         // Tell the user why there is no dashboard.
         'No area is set on your account yet, so there is no area dashboard to show.',
         // Text size.
-        style: TextStyle(fontSize: 16),
+        style: TextStyle(
+          fontSize: 16,
+          color: appDark,
+          height: 1.5,
+        ),
       ),
     );
   }
-
   // Opens the full issue list, optionally already filtered to one category.
   void _openAreaIssues(String? category) {
     // Go to the area issues page.
@@ -389,7 +441,6 @@ class _HomePageState extends State<HomePage> {
       if (mounted) _feed?.refresh();
     });
   }
-
   @override
   void dispose() {
     // Stop and free the loader when the screen closes.
@@ -400,7 +451,6 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 }
-
 // Opened from the drawer's 'My Area'; it just shows the same list as AreaReportsPage.
 // Opened from the drawer's "My Area". Shows the same issue list as
 // AreaReportsPage.
@@ -417,14 +467,12 @@ class AreaDetailPage extends StatelessWidget {
     // The fake server is optional (for tests).
     this.issuesApi,
   });
-
   // The name of the area to show.
   final String areaName;
   // The area's id on the server (may be null).
   final int? areaId;
   // Optional fake server for tests.
   final IssuesApi? issuesApi;
-
   // Flutter calls build to draw the page.
   @override
   // This method draws the page.
@@ -440,7 +488,6 @@ class AreaDetailPage extends StatelessWidget {
     );
   }
 }
-
 // Page that lists every issue in one area, loaded from the server, with filters.
 // Every issue in one area, loaded from the backend, filterable by category
 // and status.
@@ -459,29 +506,23 @@ class AreaReportsPage extends StatefulWidget {
     // The fake server is optional (for tests).
     this.issuesApi,
   });
-
   // Name of the area, used in the title and messages.
   final String areaName;
-
   // Defaults to the signed-in user's area.
   // If null, the signed-in user's own area is used.
   final int? areaId;
-
   // 'All' or a category key such as 'Electricity'.
   // 'All' or a category key such as 'Electricity'.
   final String initialFilter;
   // Optional fake server for tests.
   final IssuesApi? issuesApi;
-
   // Create the state object that holds the loader.
   @override
   State<AreaReportsPage> createState() => _AreaReportsPageState();
 }
-
 class _AreaReportsPageState extends State<AreaReportsPage> {
   // Loads the issues for this page; null if there is no area.
   AreaFeedController? _feed;
-
   // Runs once when the page opens.
   @override
   // Do Flutter's own setup first.
@@ -503,7 +544,6 @@ class _AreaReportsPageState extends State<AreaReportsPage> {
       )..refresh();
     }
   }
-
   // Runs when the page closes.
   @override
   // Stop and free the loader.
@@ -512,28 +552,42 @@ class _AreaReportsPageState extends State<AreaReportsPage> {
     _feed?.dispose();
     super.dispose();
   }
-
   // Flutter calls build to draw the page.
   @override
   Widget build(BuildContext context) {
     // Copy the loader into a local variable so we can check it safely.
     final feed = _feed;
-
     // The page layout.
     return Scaffold(
       // The top bar.
       appBar: AppBar(
         // Title shows the area name.
-        title: Text('Issues in ${widget.areaName}'),
-        // Red bar to match the app.
-        backgroundColor: Colors.red,
+        title: Text(
+          'Issues in ${widget.areaName}',
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        // Orange bar to match the app.
+        backgroundColor: appOrange,
         // White title text.
         foregroundColor: Colors.white,
+        elevation: 0,
       ),
       // The page body.
       body: Container(
-        // Light grey background.
-        color: const Color(0xFFF5F5F5),
+        // Light background.
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              appBackground,
+              appGradientEnd,
+            ],
+          ),
+        ),
         // If there is no loader (no area)...
         child: feed == null
         // ...show a centred message...
@@ -543,7 +597,14 @@ class _AreaReportsPageState extends State<AreaReportsPage> {
             // ...the padding amount,
             padding: EdgeInsets.all(24),
             // ...and the message itself.
-            child: Text('No area is set on your account yet.'),
+            child: Text(
+              'No area is set on your account yet.',
+              style: TextStyle(
+                color: appDark,
+                fontSize: 16,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ),
         )
         // Otherwise show the filterable list of issues.

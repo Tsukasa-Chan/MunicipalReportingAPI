@@ -79,7 +79,7 @@ class AreaFeedController extends ChangeNotifier {
       if (_disposed || generation != _generation) return;
       // The first result is the list of issues.
       _issues = results[0] as List<AreaIssue>;
-      // The second result (if requested) is the statistics.
+      // The second result (if requested).
       if (loadStats) _stats = results[1] as AreaStats;
       // Remember when we got fresh data.
       _lastUpdated = DateTime.now();
@@ -270,7 +270,7 @@ class _MetricTile extends StatelessWidget {
       child: Column(
         // Align items to the left.
         crossAxisAlignment: CrossAxisAlignment.start,
-        // The items in the tile.
+        // The items.
         children: [
           // The icon.
           Icon(icon, color: color, size: 22),
@@ -590,7 +590,7 @@ class _Meta extends StatelessWidget {
 
   // The small icon.
   final IconData icon;
-  // The text next to it.
+  // The text.
   final String text;
 
   // Builds what appears on screen.
@@ -660,7 +660,7 @@ void showIssueDetails(BuildContext context, AreaIssue issue) {
           children: [
             // Title and status side by side.
             Row(
-              // The two items.
+              // The items.
               children: [
                 // Title takes the free space.
                 Expanded(
@@ -1185,14 +1185,20 @@ class AreaLatestIssuesCard extends StatelessWidget {
                 width: double.infinity,
                 // The "view all" button with an icon.
                 child: ElevatedButton.icon(
-                  // Red button styling.
+                  // Orange button styling to match the app theme.
                   style: ElevatedButton.styleFrom(
-                    // Red background.
-                    backgroundColor: Colors.red,
+                    // App brand orange background.
+                    backgroundColor: const Color(0xFFC94F1B),
                     // White text and icon.
                     foregroundColor: Colors.white,
                     // Make the button a bit taller.
                     padding: const EdgeInsets.symmetric(vertical: 13),
+                    // Rounded corners to match the app design.
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    // Remove the default elevation.
+                    elevation: 0,
                   ),
                   // Open the full list when pressed.
                   onPressed: onViewAll,

@@ -1,44 +1,36 @@
-
 import 'dart:async';
-
 import 'package:flutter/material.dart';
-
 import 'api_paths.dart';
 import 'Suprevisor_view_reports.dart';
 import 'Supervisor_theme.dart';
 import 'auth_store.dart';
 import 'report_store.dart';
-
 class SupervisorSchedulePage extends StatefulWidget {
   final DateTime day;
-
   const SupervisorSchedulePage({
     super.key,
     required this.day,
   });
-
   @override
   State<SupervisorSchedulePage> createState() =>
       _SupervisorSchedulePageState();
 }
-
 class _SupervisorSchedulePageState
     extends State<SupervisorSchedulePage> {
+  static const Color _orange = Color(0xFFC94F1B);
+  static const Color _darkText = Color(0xFF292524);
+  static const Color _secondaryText = Color(0xFF78716C);
+  static const Color _cream = Color(0xFFFFF8F4);
+  static const Color _borderColor = Color(0xFFE8C7B8);
   DateTime _now = DateTime.now();
-
   Timer? _timer;
-
   List<ReportRequest> _reports = [];
-
   bool _isLoading = true;
   String? _errorMessage;
-
   @override
   void initState() {
     super.initState();
-
     _fetchAssignedReports();
-
     _timer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) {
         setState(() {
@@ -47,22 +39,18 @@ class _SupervisorSchedulePageState
       }
     });
   }
-
   @override
   void dispose() {
     _timer?.cancel();
     super.dispose();
   }
-
   // Checks whether a report has already been completed.
   bool _isResolved(ReportRequest report) {
     final status = report.status.trim().toLowerCase();
-
     return status == 'resolved' ||
         status == 'completed' ||
         status == 'finished';
   }
-
   // Loads all outstanding reports assigned to the supervisor.
   Future<void> _fetchAssignedReports() async {
     if (mounted) {
@@ -71,14 +59,11 @@ class _SupervisorSchedulePageState
         _errorMessage = null;
       });
     }
-
     try {
       final user = AuthStore.currentUser;
-
       if (user == null) {
         throw Exception('No supervisor is currently logged in.');
       }
-
       final response = await AuthStore.withAccessToken(
             (api, token) async {
           return await api.getRaw(
@@ -87,7 +72,6 @@ class _SupervisorSchedulePageState
           );
         },
       );
-
       final List<ReportRequest> fetchedReports =
       (response as List).map((json) {
         return ReportRequest.fromJson(
@@ -96,78 +80,61 @@ class _SupervisorSchedulePageState
       }).where((report) {
         return !_isResolved(report);
       }).toList();
-
       // Sorts reports by their latest assignment date.
       fetchedReports.sort((a, b) {
         final dateA = a.scheduledAt ?? a.createdAt;
         final dateB = b.scheduledAt ?? b.createdAt;
-
         return dateB.compareTo(dateA);
       });
-
       if (!mounted) return;
-
       setState(() {
         _reports = fetchedReports;
         _isLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
-
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
       });
     }
   }
-
   // Groups related reports and sorts the groups by their newest assignment.
   List<ReportGroup> _getGroups() {
     // Creates a modifiable list before sorting.
     final groups = ReportStore.groupReports(_reports).toList();
-
     groups.sort((first, second) {
       DateTime latestAssignment(ReportGroup group) {
         DateTime latest =
             group.firstReport.scheduledAt ??
                 group.firstReport.createdAt;
-
         for (final report in group.reports) {
           final date = report.scheduledAt ?? report.createdAt;
-
           if (date.isAfter(latest)) {
             latest = date;
           }
         }
-
         return latest;
       }
-
       return latestAssignment(second).compareTo(
         latestAssignment(first),
       );
     });
-
     return groups;
   }
-
   String _formatDate(DateTime date) {
     return '${date.day.toString().padLeft(2, '0')}/'
         '${date.month.toString().padLeft(2, '0')}/'
         '${date.year}';
   }
-
   String _formatTime(DateTime date) {
     final hour = date.hour.toString().padLeft(2, '0');
     final minute = date.minute.toString().padLeft(2, '0');
-
     return '$hour:$minute';
   }
-
   @override
   Widget build(BuildContext context) {
     final groups = _getGroups();
-
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Container(
@@ -185,7 +152,7 @@ class _SupervisorSchedulePageState
                       },
                       icon: const Icon(
                         Icons.arrow_back,
-                        color: Colors.white,
+                        color: _darkText,
                       ),
                     ),
                     const Expanded(
@@ -193,7 +160,7 @@ class _SupervisorSchedulePageState
                         'Today\'s Schedule',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Colors.white,
+                          color: _darkText,
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
                         ),
@@ -203,18 +170,22 @@ class _SupervisorSchedulePageState
                   ],
                 ),
               ),
-
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.2),
-                    ),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: _borderColor),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -222,7 +193,7 @@ class _SupervisorSchedulePageState
                       const Text(
                         'Outstanding Schedule',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: _darkText,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
@@ -230,8 +201,8 @@ class _SupervisorSchedulePageState
                       const SizedBox(height: 8),
                       Text(
                         _formatDate(_now),
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.8),
+                        style: const TextStyle(
+                          color: _secondaryText,
                           fontSize: 14,
                         ),
                       ),
@@ -240,23 +211,26 @@ class _SupervisorSchedulePageState
                         children: [
                           const Icon(
                             Icons.access_time,
-                            color: Colors.white,
+                            color: _orange,
                             size: 18,
                           ),
                           const SizedBox(width: 8),
                           Text(
                             _formatTime(_now),
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: _darkText,
                               fontSize: 14,
                             ),
                           ),
                           const Spacer(),
-                          Text(
-                            '${groups.length} outstanding jobs',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
+                          Flexible(
+                            child: Text(
+                              '${groups.length} outstanding jobs',
+                              textAlign: TextAlign.end,
+                              style: const TextStyle(
+                                color: _orange,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ],
@@ -265,14 +239,12 @@ class _SupervisorSchedulePageState
                   ),
                 ),
               ),
-
               const SizedBox(height: 18),
-
               Expanded(
                 child: _isLoading
                     ? const Center(
                   child: CircularProgressIndicator(
-                    color: Colors.white,
+                    color: _orange,
                   ),
                 )
                     : _errorMessage != null
@@ -284,7 +256,7 @@ class _SupervisorSchedulePageState
                       children: [
                         const Icon(
                           Icons.error_outline,
-                          color: Colors.white,
+                          color: _orange,
                           size: 40,
                         ),
                         const SizedBox(height: 12),
@@ -292,11 +264,19 @@ class _SupervisorSchedulePageState
                           'Could not load your schedule.\n$_errorMessage',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: _darkText,
                           ),
                         ),
                         const SizedBox(height: 16),
                         FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: _orange,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                              BorderRadius.circular(12),
+                            ),
+                          ),
                           onPressed: _fetchAssignedReports,
                           child: const Text('Try Again'),
                         ),
@@ -312,13 +292,14 @@ class _SupervisorSchedulePageState
                       'You have no outstanding assigned jobs.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Colors.white,
+                        color: _darkText,
                         fontSize: 16,
                       ),
                     ),
                   ),
                 )
                     : RefreshIndicator(
+                  color: _orange,
                   onRefresh: _fetchAssignedReports,
                   child: ListView.separated(
                     padding: const EdgeInsets.fromLTRB(
@@ -333,11 +314,9 @@ class _SupervisorSchedulePageState
                     itemBuilder: (context, index) {
                       final group = groups[index];
                       final report = group.firstReport;
-
                       final assignedDate =
                           report.scheduledAt ??
                               report.createdAt;
-
                       return _buildScheduleCard(
                         group,
                         assignedDate,
@@ -352,22 +331,22 @@ class _SupervisorSchedulePageState
       ),
     );
   }
-
   // Displays an individual grouped job on the schedule.
   Widget _buildScheduleCard(
       ReportGroup group,
       DateTime assignedDate,
       ) {
     final report = group.firstReport;
-
     return Card(
       color: Colors.white,
-      elevation: 3,
+      elevation: 2,
+      shadowColor: Colors.black.withValues(alpha: 0.06),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: _borderColor),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
         onTap: () async {
           await Navigator.push(
             context,
@@ -377,13 +356,12 @@ class _SupervisorSchedulePageState
               },
             ),
           );
-
           if (mounted) {
             _fetchAssignedReports();
           }
         },
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(17),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -395,12 +373,13 @@ class _SupervisorSchedulePageState
                       style: const TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.bold,
+                        color: _darkText,
                       ),
                     ),
                   ),
                   const Icon(
                     Icons.chevron_right,
-                    color: Colors.grey,
+                    color: _orange,
                   ),
                 ],
               ),
@@ -409,42 +388,44 @@ class _SupervisorSchedulePageState
                 report.area,
                 style: const TextStyle(
                   fontSize: 14,
-                  color: Colors.black87,
+                  color: _secondaryText,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   const Icon(
                     Icons.calendar_today,
                     size: 15,
-                    color: Colors.grey,
+                    color: _orange,
                   ),
                   const SizedBox(width: 6),
-                  Text(
-                    'Assigned: ${_formatDate(assignedDate)} '
-                        '${_formatTime(assignedDate)}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
+                  Expanded(
+                    child: Text(
+                      'Assigned: ${_formatDate(assignedDate)} '
+                          '${_formatTime(assignedDate)}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: _secondaryText,
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Row(
                 children: [
                   const Icon(
                     Icons.people_outline,
                     size: 16,
-                    color: Colors.grey,
+                    color: _secondaryText,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     '${group.reporterCount} reporter(s)',
                     style: const TextStyle(
                       fontSize: 13,
-                      color: Colors.grey,
+                      color: _secondaryText,
                     ),
                   ),
                   const Spacer(),
@@ -454,13 +435,13 @@ class _SupervisorSchedulePageState
                       vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.orange.withValues(alpha: 0.12),
+                      color: const Color(0xFFFFE9DC),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       report.status,
                       style: const TextStyle(
-                        color: Colors.deepOrange,
+                        color: _orange,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -475,52 +456,45 @@ class _SupervisorSchedulePageState
     );
   }
 }
-
 // Displays the details of a selected scheduled job.
 class SupervisorScheduledJobPage extends StatefulWidget {
   final ReportGroup group;
-
   const SupervisorScheduledJobPage({
     super.key,
     required this.group,
   });
-
   @override
   State<SupervisorScheduledJobPage> createState() =>
       _SupervisorScheduledJobPageState();
 }
-
 class _SupervisorScheduledJobPageState
     extends State<SupervisorScheduledJobPage> {
+  static const Color _orange = Color(0xFFC94F1B);
+  static const Color _darkText = Color(0xFF292524);
+  static const Color _secondaryText = Color(0xFF78716C);
+  static const Color _borderColor = Color(0xFFE8C7B8);
+  static const Color _cream = Color(0xFFFFF8F4);
   late ReportGroup _group;
-
   @override
   void initState() {
     super.initState();
     _group = widget.group;
   }
-
   // Updates the status of all reports in the selected group.
   void _advanceStatus() {
     final currentStatus = _group.firstReport.status;
-
     String? nextStatus;
-
     if (currentStatus == 'Assigned') {
       nextStatus = 'In progress';
     } else if (currentStatus == 'In progress') {
       nextStatus = 'On-site';
     }
-
     if (nextStatus == null) return;
-
     for (final report in _group.reports) {
       ReportStore.updateStatus(report, nextStatus);
     }
-
     setState(() {});
   }
-
   // Opens the job completion and invoice page.
   void _openInvoice() {
     Navigator.push(
@@ -534,17 +508,22 @@ class _SupervisorScheduledJobPageState
       ),
     );
   }
-
   @override
   Widget build(BuildContext context) {
     final report = _group.firstReport;
-
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('Scheduled Job'),
+        title: const Text(
+          'Scheduled Job',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         backgroundColor: pagePrimaryColor(isSupervisor: true),
         foregroundColor: Colors.white,
+        elevation: 0,
       ),
       body: Container(
         decoration: pageBackgroundDecoration(isSupervisor: true),
@@ -556,8 +535,10 @@ class _SupervisorScheduledJobPageState
               children: [
                 Card(
                   color: Colors.white,
+                  elevation: 2,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(18),
+                    side: const BorderSide(color: _borderColor),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(18),
@@ -569,6 +550,7 @@ class _SupervisorScheduledJobPageState
                           style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
+                            color: _darkText,
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -590,24 +572,22 @@ class _SupervisorScheduledJobPageState
                     ),
                   ),
                 ),
-
-                const SizedBox(height: 20),
-
+                const SizedBox(height: 24),
                 const Text(
                   'Job Progress',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: _darkText,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-
                 const SizedBox(height: 12),
-
                 Card(
                   color: Colors.white,
+                  elevation: 2,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(18),
+                    side: const BorderSide(color: _borderColor),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -632,21 +612,30 @@ class _SupervisorScheduledJobPageState
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 20),
-
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _orange,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: const Color(0xFFE7E5E4),
+                      disabledForegroundColor: _secondaryText,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
                     onPressed: report.status == 'On-site'
                         ? null
                         : _advanceStatus,
-                    child: const Text('Update Job Status'),
+                    child: const Text(
+                      'Update Job Status',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ),
-
                 const SizedBox(height: 12),
-
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
@@ -654,8 +643,12 @@ class _SupervisorScheduledJobPageState
                     icon: const Icon(Icons.receipt_long),
                     label: const Text('View Invoice / Complete Job'),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: Colors.white),
+                      foregroundColor: _orange,
+                      side: const BorderSide(color: _orange),
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                   ),
                 ),
@@ -666,7 +659,6 @@ class _SupervisorScheduledJobPageState
       ),
     );
   }
-
   Widget _detailRow(String title, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
@@ -679,7 +671,7 @@ class _SupervisorScheduledJobPageState
               title,
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                color: _darkText,
               ),
             ),
           ),
@@ -687,7 +679,8 @@ class _SupervisorScheduledJobPageState
             child: Text(
               value,
               style: const TextStyle(
-                color: Colors.black87,
+                color: _secondaryText,
+                height: 1.4,
               ),
             ),
           ),
@@ -695,7 +688,6 @@ class _SupervisorScheduledJobPageState
       ),
     );
   }
-
   Widget _progressStep(String title, bool completed) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -705,14 +697,14 @@ class _SupervisorScheduledJobPageState
             completed
                 ? Icons.check_circle
                 : Icons.radio_button_unchecked,
-            color: completed ? Colors.green : Colors.grey,
+            color: completed ? _orange : const Color(0xFFBDB8B4),
           ),
           const SizedBox(width: 12),
           Text(
             title,
             style: TextStyle(
               fontWeight: FontWeight.w600,
-              color: completed ? Colors.green : Colors.black54,
+              color: completed ? _darkText : _secondaryText,
             ),
           ),
         ],

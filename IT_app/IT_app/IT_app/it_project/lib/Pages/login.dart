@@ -45,116 +45,206 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF8F4),
       appBar: AppBar(
-        title: const Text('Login'),
-        backgroundColor: Colors.transparent,
+        title: const Text(
+          'Login',
+          style: TextStyle(
+            color: Color(0xFF292524),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: const Color(0xFFFFF8F4),
+        foregroundColor: const Color(0xFF292524),
         elevation: 0,
+        scrolledUnderElevation: 0,
       ),
-      body: Form(
-        key: _formKey,
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Container(
-              width: double.infinity,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFFFF8F4),
+              Color(0xFFFFE9DC),
+            ],
+          ),
+        ),
+        child: Form(
+          key: _formKey,
+          child: Center(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.8),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildLogo(),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Login',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 24),
-                  _field(
-                    controller: emailController,
-                    label: 'Email',
-                    keyboardType: TextInputType.emailAddress,
-                    validator: _validateEmail,
-                  ),
-                  const SizedBox(height: 14),
-                  _field(
-                    controller: passwordController,
-                    label: 'Password',
-                    obscureText: !isPasswordVisible,
-                    suffixIcon: IconButton(
-                      tooltip: isPasswordVisible
-                          ? 'Hide password'
-                          : 'Show password',
-                      icon: Icon(
-                        isPasswordVisible
-                            ? Icons.visibility_off
-                            : Icons.visibility,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(26),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFC94F1B).withOpacity(0.08),
+                      blurRadius: 25,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildLogo(),
+
+                    const SizedBox(height: 22),
+
+                    const Text(
+                      'Welcome Back',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF292524),
                       ),
-                      onPressed: () => setState(() {
-                        isPasswordVisible = !isPasswordVisible;
-                      }),
                     ),
-                    validator: _validatePassword,
-                  ),
-                  if (_errorMessage != null) ...[
-                    const SizedBox(height: 14),
-                    Text(
-                      _errorMessage!,
+
+                    const SizedBox(height: 8),
+
+                    const Text(
+                      'Login to your account to continue.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.red.shade700),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF78716C),
+                      ),
                     ),
-                  ],
-                  if (_infoMessage != null) ...[
-                    const SizedBox(height: 14),
-                    Text(
-                      _infoMessage!,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.green.shade700),
+
+                    const SizedBox(height: 30),
+
+                    _field(
+                      controller: emailController,
+                      label: 'Email',
+                      keyboardType: TextInputType.emailAddress,
+                      validator: _validateEmail,
                     ),
-                  ],
-                  const SizedBox(height: 18),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: _isLoggingIn ? null : _login,
-                          style: ElevatedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(52),
-                          ),
-                          child: _isLoggingIn
-                              ? const SizedBox(
-                            height: 22,
-                            width: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                            ),
-                          )
-                              : const Text('Login'),
+
+                    const SizedBox(height: 18),
+
+                    _field(
+                      controller: passwordController,
+                      label: 'Password',
+                      obscureText: !isPasswordVisible,
+                      suffixIcon: IconButton(
+                        tooltip: isPasswordVisible
+                            ? 'Hide password'
+                            : 'Show password',
+                        icon: Icon(
+                          isPasswordVisible
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                          color: const Color(0xFF9A6A55),
+                        ),
+                        onPressed: () => setState(() {
+                          isPasswordVisible = !isPasswordVisible;
+                        }),
+                      ),
+                      validator: _validatePassword,
+                    ),
+
+                    if (_errorMessage != null) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        _errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.red.shade700,
+                          fontSize: 13,
                         ),
                       ),
-                      const SizedBox(width: 12),
                     ],
-                  ),
-                  if (_showResend)
-                    TextButton(
-                      onPressed: _isResending ? null : _resendConfirmation,
-                      child: Text(
-                        _isResending
-                            ? 'Sending...'
-                            : 'Resend confirmation email',
+
+                    if (_infoMessage != null) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        _infoMessage!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.green.shade700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 26),
+
+                    ElevatedButton(
+                      onPressed: _isLoggingIn ? null : _login,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFC94F1B),
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: const Color(0xFFE8A184),
+                        elevation: 4,
+                        shadowColor:
+                        const Color(0xFFC94F1B).withOpacity(0.25),
+                        minimumSize: const Size.fromHeight(54),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: _isLoggingIn
+                          ? const SizedBox(
+                        height: 22,
+                        width: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                          : const Text(
+                        'Login',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.3,
+                        ),
                       ),
                     ),
-                  TextButton(
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const ForgotPage()),
+
+                    if (_showResend)
+                      TextButton(
+                        onPressed:
+                        _isResending ? null : _resendConfirmation,
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFFC94F1B),
+                        ),
+                        child: Text(
+                          _isResending
+                              ? 'Sending...'
+                              : 'Resend confirmation email',
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+
+                    const SizedBox(height: 8),
+
+                    TextButton(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ForgotPage(),
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFFC94F1B),
+                      ),
+                      child: const Text(
+                        'Forgot Password?',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
-                    child: const Text('Forgot Password'),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -165,13 +255,27 @@ class _LoginPageState extends State<LoginPage> {
 
   Widget _buildLogo() {
     return Center(
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: Image.asset(
-          'lib/img/app logo.png',
-          width: 110,
-          height: 90,
-          fit: BoxFit.cover,
+      child: Container(
+        padding: const EdgeInsets.all(5),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFC94F1B).withOpacity(0.12),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: Image.asset(
+            'lib/img/app logo.png',
+            width: 110,
+            height: 90,
+            fit: BoxFit.cover,
+          ),
         ),
       ),
     );
@@ -192,11 +296,53 @@ class _LoginPageState extends State<LoginPage> {
       maxLength: maxLength,
       keyboardType: keyboardType,
       validator: validator,
+      style: const TextStyle(
+        color: Color(0xFF292524),
+        fontSize: 15,
+      ),
       decoration: InputDecoration(
         labelText: label,
+        labelStyle: const TextStyle(
+          color: Color(0xFF9A6A55),
+        ),
         filled: true,
-        fillColor: Colors.white,
-        border: const OutlineInputBorder(),
+        fillColor: const Color(0xFFFFF8F4),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 18,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(
+            color: Color(0xFFE8C7B8),
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(
+            color: Color(0xFFE8C7B8),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(
+            color: Color(0xFFC94F1B),
+            width: 1.8,
+          ),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(
+            color: Colors.red,
+          ),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(
+            color: Colors.red,
+            width: 1.5,
+          ),
+        ),
         suffixIcon: suffixIcon,
       ),
     );

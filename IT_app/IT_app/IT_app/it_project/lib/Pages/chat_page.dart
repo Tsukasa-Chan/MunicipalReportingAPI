@@ -242,10 +242,17 @@ class _ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF8F4),
       appBar: AppBar(
-        title: const Text('Fix My City assistant'),
-        backgroundColor: Colors.red,
+        title: const Text(
+          'Fix My City assistant',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: const Color(0xFFC94F1B),
         foregroundColor: Colors.white,
+        elevation: 0,
       ),
       body: SafeArea(
         child: Column(
@@ -285,7 +292,19 @@ class _ChatPageState extends State<ChatPage> {
         spacing: 8,
         children: [
           for (final question in questions)
-            ActionChip(label: Text(question), onPressed: () => _send(question)),
+            ActionChip(
+              label: Text(question),
+              onPressed: () => _send(question),
+              backgroundColor: Colors.white,
+              side: const BorderSide(color: Color(0xFFE8C7B8)),
+              labelStyle: const TextStyle(
+                color: Color(0xFF292524),
+                fontWeight: FontWeight.w500,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
         ],
       ),
     );
@@ -293,8 +312,16 @@ class _ChatPageState extends State<ChatPage> {
 
   // provides the message input and send button.
   Widget _inputBar() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 4, 8, 8),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(
+            color: const Color(0xFFE8C7B8).withValues(alpha: 0.8),
+          ),
+        ),
+      ),
       child: Row(
         children: [
           Expanded(
@@ -306,15 +333,51 @@ class _ChatPageState extends State<ChatPage> {
               buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
               textInputAction: TextInputAction.send,
               onSubmitted: _send,
-              decoration: const InputDecoration(
+              style: const TextStyle(
+                color: Color(0xFF292524),
+                fontSize: 15,
+              ),
+              decoration: InputDecoration(
                 hintText: 'Ask a question or describe a problem',
+                hintStyle: const TextStyle(
+                  color: Color(0xFF78716C),
+                  fontSize: 14,
+                ),
+                filled: true,
+                fillColor: const Color(0xFFFFF8F4),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: const BorderSide(
+                    color: Color(0xFFE8C7B8),
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: const BorderSide(
+                    color: Color(0xFFE8C7B8),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: const BorderSide(
+                    color: Color(0xFFC94F1B),
+                    width: 1.5,
+                  ),
+                ),
               ),
             ),
           ),
           IconButton(
             tooltip: 'Send',
             onPressed: _sending ? null : () => _send(_input.text),
-            icon: const Icon(Icons.send, color: Colors.red),
+            icon: const Icon(
+              Icons.send,
+              color: Color(0xFFC94F1B),
+            ),
           ),
         ],
       ),
@@ -330,7 +393,10 @@ class _ChatPageState extends State<ChatPage> {
         child: SizedBox(
           width: 22,
           height: 22,
-          child: CircularProgressIndicator(strokeWidth: 2),
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: Color(0xFFC94F1B),
+          ),
         ),
       ),
     );
@@ -339,11 +405,13 @@ class _ChatPageState extends State<ChatPage> {
   // displays a chat message.
   Widget _bubbleView(_Bubble bubble) {
     final background = bubble.isError
-        ? Colors.orange.withValues(alpha: 0.15)
+        ? const Color(0xFFFFE9DC)
         : bubble.isUser
-        ? Colors.red
+        ? const Color(0xFFC94F1B)
         : Colors.white;
-    final foreground = bubble.isUser ? Colors.white : Colors.black87;
+    final foreground = bubble.isUser
+        ? Colors.white
+        : const Color(0xFF292524);
 
     return Align(
       alignment: bubble.isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -354,12 +422,34 @@ class _ChatPageState extends State<ChatPage> {
         decoration: BoxDecoration(
           color: background,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.black12),
+          border: Border.all(
+            color: bubble.isError
+                ? const Color(0xFFE8C7B8)
+                : bubble.isUser
+                ? const Color(0xFFC94F1B)
+                : const Color(0xFFE8C7B8),
+          ),
+          boxShadow: bubble.isUser
+              ? []
+              : [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(bubble.text, style: TextStyle(color: foreground, fontSize: 15)),
+            Text(
+              bubble.text,
+              style: TextStyle(
+                color: foreground,
+                fontSize: 15,
+                height: 1.4,
+              ),
+            ),
             if (bubble.draft != null && !bubble.draftHandled) _draftCard(bubble),
           ],
         ),
@@ -380,7 +470,7 @@ class _ChatPageState extends State<ChatPage> {
             TextSpan(text: value),
           ],
         ),
-        style: const TextStyle(color: Colors.black87),
+        style: const TextStyle(color: Color(0xFF292524)),
       ),
     );
 
@@ -388,13 +478,22 @@ class _ChatPageState extends State<ChatPage> {
       margin: const EdgeInsets.only(top: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.red.withValues(alpha: 0.06),
+        color: const Color(0xFFFFF8F4),
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFE8C7B8),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Report ready to submit', style: TextStyle(fontWeight: FontWeight.bold)),
+          const Text(
+            'Report ready to submit',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF292524),
+            ),
+          ),
           const SizedBox(height: 8),
           line('Category', draft.categoryLabel),
           line('Problem', draft.issueTypeLabel),
@@ -402,18 +501,32 @@ class _ChatPageState extends State<ChatPage> {
           if (draft.description.isNotEmpty) line('Details', draft.description),
           const Text(
             'Your phone\'s current location will be used as the report\'s position.',
-            style: TextStyle(fontSize: 12, color: Colors.black54),
+            style: TextStyle(
+              fontSize: 12,
+              color: Color(0xFF78716C),
+            ),
           ),
           const SizedBox(height: 8),
           Row(
             children: [
               ElevatedButton(
                 onPressed: _submitting ? null : () => _submitDraft(bubble),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFC94F1B),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
                 child: Text(_submitting ? 'Submitting...' : 'Submit report'),
               ),
               const SizedBox(width: 8),
               TextButton(
                 onPressed: _submitting ? null : () => setState(() => bubble.draftHandled = true),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFC94F1B),
+                ),
                 child: const Text('Dismiss'),
               ),
             ],
