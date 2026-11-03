@@ -8,6 +8,10 @@ import 'auth_store.dart';
 class ReportRequest {
   ReportRequest({
     required this.id,
+    this.backendId,
+    this.areaId,
+    this.latitude,
+    this.longitude,
     required this.senderName,
     this.senderUsername = '',
     required this.issueType,
@@ -41,6 +45,10 @@ class ReportRequest {
        queuedAt = queuedAt ?? createdAt ?? DateTime.now();
 
   final int id;
+  int? backendId;
+  int? areaId;
+  double? latitude;
+  double? longitude;
   final String senderName;
   final String senderUsername;
   String issueType;
@@ -72,6 +80,7 @@ class ReportRequest {
   String storageType;
 
   bool get isOffline => storageType == 'offline';
+
   bool get isSubmitted => submittedAt != null;
 
   void markSubmitted() {
@@ -82,6 +91,10 @@ class ReportRequest {
 
   Map<String, dynamic> toJson() => {
     'id': id,
+    'backendId': backendId,
+    'areaId': areaId,
+    'latitude': latitude,
+    'longitude': longitude,
     'senderName': senderName,
     'senderUsername': senderUsername,
     'issueType': issueType,
@@ -115,6 +128,10 @@ class ReportRequest {
 
   factory ReportRequest.fromJson(Map<String, dynamic> json) => ReportRequest(
     id: json['id'] as int,
+    backendId: (json['backendId'] as num?)?.toInt(),
+    areaId: (json['areaId'] as num?)?.toInt(),
+    latitude: (json['latitude'] as num?)?.toDouble(),
+    longitude: (json['longitude'] as num?)?.toDouble(),
     senderName: json['senderName'] as String,
     senderUsername: json['senderUsername'] as String? ?? '',
     issueType: json['issueType'] as String,
@@ -253,9 +270,11 @@ class ReportStore {
   }
 
   static List<ReportRequest> get reports => List.unmodifiable(_reports);
+
   static List<ReportRequest> get offlineReports => List.unmodifiable(
     _reports.where((report) => report.storageType == 'offline').toList(),
   );
+
   static List<ReportRequest> get onlineReports => List.unmodifiable(
     _reports.where((report) => report.storageType == 'online').toList(),
   );
@@ -420,6 +439,10 @@ class ReportStore {
     String locationAddress = '',
     required String imagePath,
     bool isOfflineSubmission = false,
+    int? backendId,
+    int? areaId,
+    double? latitude,
+    double? longitude,
   }) {
     final user = AuthStore.currentUser;
     if (user == null) {
@@ -428,16 +451,23 @@ class ReportStore {
 
     final report = ReportRequest(
       id: _nextId++,
+      backendId: backendId,
+      areaId: areaId,
+      latitude: latitude,
+      longitude: longitude,
       senderName: user.fullName,
       senderUsername: user.username,
+      imagePath: imagePath,
       issueType: issueType,
       issue: issue,
       area: area.trim(),
       description: description.trim(),
       pinLocation: pinLocation.trim(),
       locationAddress: locationAddress.trim(),
-      storageType: isOfflineSubmission ? 'offline' : 'online',  // changed
-      syncStatus: isOfflineSubmission ? 'Queued offline' : 'Pending submission', // changed
+      storageType: isOfflineSubmission ? 'offline' : 'online',
+      // changed
+      syncStatus: isOfflineSubmission ? 'Queued offline' : 'Pending submission',
+      // changed
       queuedAt: DateTime.now(),
       createdAt: DateTime.now(),
       submittedAt: null,
@@ -498,11 +528,32 @@ class ReportStore {
     required String issueType,
     required String issue,
     required String description,
+    String? area,
+    String? locationAddress,
+    String? pinLocation,
+    String? imagePath,
+    int? areaId,
+    double? latitude,
+    double? longitude,
   }) {
+    if (!_reports.contains(report)) return;
+    if (area != null) report.area = area;
+    if (locationAddress != null) report.locationAddress = locationAddress;
+    if (pinLocation != null) report.pinLocation = pinLocation;
+    if (imagePath != null) report.imagePath = imagePath;
+    if (areaId != null) report.areaId = areaId;
+    if (latitude != null) report.latitude = latitude;
+    if (longitude != null) report.longitude = longitude;
     report.issueType = issueType;
     report.issue = issue;
     report.description = description.trim();
     _save();
+  }
+
+  // Remove a report from this user's local cache after successful API deletion.
+  static Future<void> removeReport(ReportRequest report) async {
+    _reports.remove(report);
+    await _save();
   }
 
   static void saveJobCompletion({
@@ -539,9 +590,7 @@ class ReportStore {
   }
 
   // Mark a report as submitted and save its updated status.
-  static Future<void> markReportSubmitted(
-      ReportRequest report,
-      ) async {
+  static Future<void> markReportSubmitted(ReportRequest report) async {
     if (!_reports.contains(report)) return;
 
     report.storageType = 'online';
@@ -549,7 +598,6 @@ class ReportStore {
 
     await _save();
   }
-
 
   static Future<void> _save() async {
     final preferences = _preferences;

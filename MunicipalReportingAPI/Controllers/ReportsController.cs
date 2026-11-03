@@ -127,6 +127,41 @@ namespace MunicipalReportingAPI.Controllers
             return Ok(await ToDtosAsync(reports));
         }
 
+        // endpoint looks at logged-in user, checks if they are a supervisor
+        // retuns reports linked to the Issue assigned to them
+        [Authorize(Roles = "Supervisor")]
+        [HttpGet("/api/supervisors/{supervisorUsername}/reports")]
+        public async Task<IActionResult> GetAssignedReports(String supervisorUsername)
+        {
+            var userId = GetCurrentUserId();
+
+            // Finds reports where issue is assigned to the supervisor
+            var reports = await ReportsWithDetails()
+                .Where(r => r.Issue != null && r.Issue.SupervisorId == userId)
+                .OrderByDescending(r => r.CreatedAt)
+                .ToListAsync();
+            // formatting response to json for Flutter
+            var response = reports.Select(r => new
+            {
+                id = r.Id,
+                senderName = r.User != null ? r.User.FullName : "Unknown Sender", 
+                senderUsername = r.User != null ? r.User.UserName : "No username",
+                issueType = r.IssueType.ToString(),
+                issue = r.Description ?? "No description", 
+                area = r.Area != null ? r.Area.Name : "Unknown Area",
+                createdAt = r.CreatedAt,
+                status = r.Issue != null ? r.Issue.Status.ToString() : "Pending",
+                assignedSupervisorUsername = supervisorUsername,
+                scheduledAt = r.Issue != null ? r.Issue.ScheduledAt : (DateTime?)null
+                // "I added public DateTime? ScheduledAt { get; set; } to the Issue.cs model
+                // to show the supervisor
+                // run a new EF core migration to update the database."
+            }).ToList();
+
+            return Ok(response);
+        }
+
+
         [Authorize]
         [HttpPost]
         public async Task<IActionResult> CreateReport([FromForm] CreateReportDTO dto)

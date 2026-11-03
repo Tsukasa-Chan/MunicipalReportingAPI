@@ -44,200 +44,304 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF8F4),
       appBar: AppBar(
-        title: const Text('Register'),
-        backgroundColor: Colors.transparent,
+        title: const Text(
+          'Register',
+          style: TextStyle(
+            color: Color(0xFF292524),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: const Color(0xFFFFF8F4),
+        foregroundColor: const Color(0xFF292524),
         elevation: 0,
+        scrolledUnderElevation: 0,
       ),
-      body: Form(
-        key: _formKey,
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Container(
-              width: double.infinity,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFFFF8F4),
+              Color(0xFFFFE9DC),
+            ],
+          ),
+        ),
+        child: Form(
+          key: _formKey,
+          child: Center(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.8),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildLogo(),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Register',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(26),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFC94F1B).withOpacity(0.08),
+                      blurRadius: 25,
+                      offset: const Offset(0, 10),
                     ),
-                  ),
-                  const SizedBox(height: 24),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildLogo(),
 
-                  _field(
-                    controller: fullNameController,
-                    label: 'Full Name',
-                    validator: (value) => _required(value, 'full name'),
-                  ),
-                  const SizedBox(height: 14),
+                    const SizedBox(height: 22),
 
-                  _field(
-                    controller: emailController,
-                    label: 'Email',
-                    keyboardType: TextInputType.emailAddress,
-                    inputFormatters: [LowerCaseTextFormatter()],
-                    validator: _validateEmail,
-                  ),
-                  const SizedBox(height: 14),
-
-                  DropdownButtonFormField<int>(
-                    initialValue: selectedWard,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Ward',
-                    ),
-                    items: AuthStore.wardAreas.keys
-                        .map(
-                          (ward) => DropdownMenuItem<int>(
-                        value: ward,
-                        child: Text(
-                          'Ward $ward',
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                    const Text(
+                      'Create Account',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF292524),
                       ),
-                    )
-                        .toList(),
-                    validator: (value) =>
-                    value == null ? 'Please select your ward' : null,
-                    onChanged: (ward) {
-                      setState(() {
-                        selectedWard = ward;
-                        selectedCommunityArea = null;
-                      });
-                    },
-                  ),
+                    ),
 
-                  if (selectedWard != null) ...[
-                    const SizedBox(height: 14),
-                    DropdownButtonFormField<String>(
-                      initialValue: selectedCommunityArea,
+                    const SizedBox(height: 8),
+
+                    const Text(
+                      'Join your community and help make a difference.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF78716C),
+                        height: 1.5,
+                      ),
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    _field(
+                      controller: fullNameController,
+                      label: 'Full Name',
+                      inputFormatters: [
+                        FilteringTextInputFormatter.deny(RegExp(r'[0-9]')),
+                      ],
+                      validator: (value) => _required(value, 'full name'),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    _field(
+                      controller: emailController,
+                      label: 'Email',
+                      keyboardType: TextInputType.emailAddress,
+                      inputFormatters: [LowerCaseTextFormatter()],
+                      validator: _validateEmail,
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    DropdownButtonFormField<int>(
+                      initialValue: selectedWard,
                       isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Area',
-                      ),
-                      items:
-                      (AuthStore.wardAreas[selectedWard] ?? const <String>[])
+                      decoration: _dropdownDecoration('Ward'),
+                      items: AuthStore.wardAreas.keys
                           .map(
-                            (area) => DropdownMenuItem<String>(
-                          value: area,
+                            (ward) => DropdownMenuItem<int>(
+                          value: ward,
                           child: Text(
-                            area,
+                            'Ward $ward',
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       )
                           .toList(),
-                      validator: (value) => value == null
-                          ? 'Please select your area'
-                          : null,
-                      onChanged: (area) {
+                      validator: (value) =>
+                      value == null ? 'Please select your ward' : null,
+                      onChanged: (ward) {
                         setState(() {
-                          selectedCommunityArea = area;
+                          selectedWard = ward;
+                          selectedCommunityArea = null;
                         });
                       },
+                    ),
+
+                    if (selectedWard != null) ...[
+                      const SizedBox(height: 18),
+
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedCommunityArea,
+                        isExpanded: true,
+                        decoration: _dropdownDecoration('Area'),
+                        items: (AuthStore.wardAreas[selectedWard] ??
+                            const <String>[])
+                            .map(
+                              (area) => DropdownMenuItem<String>(
+                            value: area,
+                            child: Text(
+                              area,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                            .toList(),
+                        validator: (value) => value == null
+                            ? 'Please select your area'
+                            : null,
+                        onChanged: (area) {
+                          setState(() {
+                            selectedCommunityArea = area;
+                          });
+                        },
+                      ),
+                    ],
+
+                    const SizedBox(height: 18),
+
+                    _field(
+                      controller: passwordController,
+                      label: 'Password',
+                      obscureText: !isPasswordVisible,
+                      suffixIcon: IconButton(
+                        tooltip: isPasswordVisible
+                            ? 'Hide password'
+                            : 'Show password',
+                        icon: Icon(
+                          isPasswordVisible
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                          color: const Color(0xFF9A6A55),
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            isPasswordVisible = !isPasswordVisible;
+                          });
+                        },
+                      ),
+                      validator: _validatePassword,
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    _field(
+                      controller: confirmPasswordController,
+                      label: 'Confirm Password',
+                      obscureText: !isConfirmPasswordVisible,
+                      suffixIcon: IconButton(
+                        tooltip: isConfirmPasswordVisible
+                            ? 'Hide password'
+                            : 'Show password',
+                        icon: Icon(
+                          isConfirmPasswordVisible
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                          color: const Color(0xFF9A6A55),
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            isConfirmPasswordVisible =
+                            !isConfirmPasswordVisible;
+                          });
+                        },
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please confirm your password';
+                        }
+
+                        if (value != passwordController.text) {
+                          return 'Security prompt: your passwords do not match';
+                        }
+
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Password requirements
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF8F4),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: const Color(0xFFE8C7B8),
+                        ),
+                      ),
+                      child: const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.lock_outline_rounded,
+                                color: Color(0xFFC94F1B),
+                                size: 19,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Password must:',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: Color(0xFF292524),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 12),
+                          _PasswordRequirement(
+                            text: 'Contain 8 or more characters',
+                          ),
+                          _PasswordRequirement(
+                            text: 'At least one uppercase character',
+                          ),
+                          _PasswordRequirement(
+                            text: 'At least one lowercase character',
+                          ),
+                          _PasswordRequirement(
+                            text: 'At least one number',
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 26),
+
+                    ElevatedButton(
+                      onPressed: _isRegistering ? null : _register,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFC94F1B),
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: const Color(0xFFE8A184),
+                        elevation: 4,
+                        shadowColor:
+                        const Color(0xFFC94F1B).withOpacity(0.25),
+                        minimumSize: const Size.fromHeight(54),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: _isRegistering
+                          ? const SizedBox(
+                        height: 22,
+                        width: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                          : const Text(
+                        'Create Account',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
                     ),
                   ],
-
-                  const SizedBox(height: 14),
-
-                  _field(
-                    controller: passwordController,
-                    label: 'Password',
-                    obscureText: !isPasswordVisible,
-                    suffixIcon: IconButton(
-                      tooltip: isPasswordVisible
-                          ? 'Hide password'
-                          : 'Show password',
-                      icon: Icon(
-                        isPasswordVisible
-                            ? Icons.visibility_off
-                            : Icons.visibility,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          isPasswordVisible = !isPasswordVisible;
-                        });
-                      },
-                    ),
-                    validator: _validatePassword,
-                  ),
-                  const SizedBox(height: 14),
-
-                  _field(
-                    controller: confirmPasswordController,
-                    label: 'Confirm Password',
-                    obscureText: !isConfirmPasswordVisible,
-                    suffixIcon: IconButton(
-                      tooltip: isConfirmPasswordVisible
-                          ? 'Hide password'
-                          : 'Show password',
-                      icon: Icon(
-                        isConfirmPasswordVisible
-                            ? Icons.visibility_off
-                            : Icons.visibility,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          isConfirmPasswordVisible =
-                          !isConfirmPasswordVisible;
-                        });
-                      },
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please confirm your password';
-                      }
-
-                      if (value != passwordController.text) {
-                        return 'Security prompt: your passwords do not match';
-                      }
-
-                      return null;
-                    },
-                  ),
-
-                  const SizedBox(height: 5),
-                  const Text(
-                    'Password must:',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const Text(
-                    '- Contain 8 or more characters '
-                        '\n- At least one uppercase character '
-                        '\n- At least one lowercase character '
-                        '\n- At least one number',
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  ElevatedButton(
-                    onPressed: _isRegistering ? null : _register,
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(52),
-                    ),
-                    child: _isRegistering
-                        ? const SizedBox(
-                      height: 22,
-                      width: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                      ),
-                    )
-                        : const Text('Register'),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -249,16 +353,73 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget _buildLogo() {
     return Center(
       child: Container(
-        width: 78,
-        height: 78,
-        decoration: const BoxDecoration(
+        padding: const EdgeInsets.all(5),
+        decoration: BoxDecoration(
           color: Colors.white,
-          shape: BoxShape.circle,
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFC94F1B).withOpacity(0.12),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
-        child: const Icon(
-          Icons.location_city_rounded,
-          size: 42,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: Image.asset(
+            'lib/img/app logo.png',
+            width: 110,
+            height: 90,
+            fit: BoxFit.cover,
+          ),
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _dropdownDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(
+        color: Color(0xFF9A6A55),
+      ),
+      filled: true,
+      fillColor: const Color(0xFFFFF8F4),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 18,
+      ),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(13),
+        borderSide: const BorderSide(
+          color: Color(0xFFE8C7B8),
+        ),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(13),
+        borderSide: const BorderSide(
+          color: Color(0xFFE8C7B8),
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(13),
+        borderSide: const BorderSide(
           color: Color(0xFFC94F1B),
+          width: 1.8,
+        ),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(13),
+        borderSide: const BorderSide(
+          color: Colors.red,
+        ),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(13),
+        borderSide: const BorderSide(
+          color: Colors.red,
+          width: 1.5,
         ),
       ),
     );
@@ -282,12 +443,54 @@ class _RegisterPageState extends State<RegisterPage> {
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
       validator: validator,
+      style: const TextStyle(
+        color: Color(0xFF292524),
+        fontSize: 15,
+      ),
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,
+        labelStyle: const TextStyle(
+          color: Color(0xFF9A6A55),
+        ),
         filled: true,
-        fillColor: Colors.white,
-        border: const OutlineInputBorder(),
+        fillColor: const Color(0xFFFFF8F4),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 18,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(
+            color: Color(0xFFE8C7B8),
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(
+            color: Color(0xFFE8C7B8),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(
+            color: Color(0xFFC94F1B),
+            width: 1.8,
+          ),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(
+            color: Colors.red,
+          ),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: const BorderSide(
+            color: Colors.red,
+            width: 1.5,
+          ),
+        ),
         suffixIcon: suffixIcon,
       ),
     );
@@ -472,6 +675,39 @@ class LowerCaseTextFormatter extends TextInputFormatter {
     return newValue.copyWith(
       text: newValue.text.toLowerCase(),
       selection: newValue.selection,
+    );
+  }
+}
+
+class _PasswordRequirement extends StatelessWidget {
+  const _PasswordRequirement({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 7),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.check_circle_outline,
+            size: 16,
+            color: Color(0xFFC94F1B),
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF78716C),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -11,6 +11,10 @@ class UserAccount {
     required this.email,
     required this.password,
     this.communityArea = '',
+    // The user's area id from the server (optional).
+    this.areaId,
+    // The ward name, such as 'Ward 62' (blank if unknown).
+    this.wardName = '',
     this.supervisorIssueType,
     this.isAdmin = false,
     this.isWorker = false,
@@ -24,6 +28,11 @@ class UserAccount {
   final String email;
   final String password;
   final String communityArea;
+  // Backend id of the user's area (used to load that area's issues/stats).
+  // The user's area id; used to ask the server for that area's issues.
+  final int? areaId;
+  // The ward name the user's area belongs to.
+  final String wardName;
   final String? supervisorIssueType;
   final bool isAdmin;
   final bool isWorker;
@@ -41,6 +50,10 @@ class UserAccount {
     String? email,
     String? password,
     String? communityArea,
+    // Lets copyWith change the area id.
+    int? areaId,
+    // Lets copyWith change the ward name.
+    String? wardName,
     String? supervisorIssueType,
     bool? isAdmin,
     bool? isWorker,
@@ -54,6 +67,10 @@ class UserAccount {
       email: email ?? this.email,
       password: password ?? this.password,
       communityArea: communityArea ?? this.communityArea,
+      // Keep the old area id unless a new one is given.
+      areaId: areaId ?? this.areaId,
+      // Keep the old ward name unless a new one is given.
+      wardName: wardName ?? this.wardName,
       supervisorIssueType: supervisorIssueType ?? this.supervisorIssueType,
       isAdmin: isAdmin ?? this.isAdmin,
       isWorker: isWorker ?? this.isWorker,
@@ -159,6 +176,14 @@ class AuthStore {
     final fullName = (profile['fullName'] ?? '').toString();
     final role = (profile['role'] ?? 'User').toString();
     final areaName = (profile['areaName'] ?? '').toString().trim();
+    // Read the ward name from the server's /me answer (blank if missing).
+    final wardName = (profile['wardName'] ?? '').toString().trim();
+    // Read the raw area id, which may be a number or text.
+    final rawAreaId = profile['areaId'];
+    // Turn it into a whole number...
+    final areaId =
+    // ...or null if it is missing or not a number.
+    rawAreaId is num ? rawAreaId.toInt() : int.tryParse('${rawAreaId ?? ''}');
 
     final (name, surname) = _splitName(fullName, email);
 
@@ -175,6 +200,10 @@ class AuthStore {
       email: email,
       password: '',
       communityArea: areaName,
+      // Store the area id on the user.
+      areaId: areaId,
+      // Store the ward name on the user.
+      wardName: wardName,
       isAdmin: isAdmin,
       isSupervisor: isSupervisor,
       isVerified: profile['emailConfirmed'] == true,

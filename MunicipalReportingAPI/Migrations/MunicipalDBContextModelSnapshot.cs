@@ -155,271 +155,6 @@ namespace MunicipalReportingAPI.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("MunicipalReportingAPI.Models.Area", b =>
-                {
-                    b.Property<int>("Id")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
-
-                    b.Property<int>("WardId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("WardId", "Name")
-                        .IsUnique();
-
-                    b.ToTable("Areas");
-
-                    b.HasData(
-                            new
-                            {
-                                Id = 1,
-                                Name = "Brake Village",
-                                WardId = 58
-                            },
-                            new
-                            {
-                                Id = 2,
-                                Name = "Canelands",
-                                WardId = 58
-                            },
-                            new
-                            {
-                                Id = 3,
-                                Name = "Casuarina",
-                                WardId = 58
-                            },
-                            new
-                            {
-                                Id = 4,
-                                Name = "Desainagar",
-                                WardId = 58
-                            },
-                            new
-                            {
-                                Id = 5,
-                                Name = "Ghandinagar",
-                                WardId = 58
-                            },
-                            new
-                            {
-                                Id = 6,
-                                Name = "Hammonds Farm",
-                                WardId = 58
-                            },
-                            new
-                            {
-                                Id = 7,
-                                Name = "King Shaka International Airport zone",
-                                WardId = 58
-                            },
-                            new
-                            {
-                                Id = 8,
-                                Name = "La Mercy",
-                                WardId = 58
-                            },
-                            new
-                            {
-                                Id = 9,
-                                Name = "Lungelani",
-                                WardId = 58
-                            },
-                            new
-                            {
-                                Id = 10,
-                                Name = "Pholani",
-                                WardId = 58
-                            },
-                            new
-                            {
-                                Id = 11,
-                                Name = "Sastri Circle / Belgate",
-                                WardId = 58
-                            },
-                            new
-                            {
-                                Id = 12,
-                                Name = "Thuthukani",
-                                WardId = 58
-                            },
-                            new
-                            {
-                                Id = 13,
-                                Name = "Tongaat Beach / Westbrook",
-                                WardId = 58
-                            },
-                            new
-                            {
-                                Id = 14,
-                                Name = "Belvedere (including Belvedere North)",
-                                WardId = 61
-                            },
-                            new
-                            {
-                                Id = 15,
-                                Name = "Buffelsdale",
-                                WardId = 61
-                            },
-                            new
-                            {
-                                Id = 16,
-                                Name = "Chelmsford Heights",
-                                WardId = 61
-                            },
-                            new
-                            {
-                                Id = 17,
-                                Name = "Emona Sunhill",
-                                WardId = 61
-                            },
-                            new
-                            {
-                                Id = 18,
-                                Name = "Gwalas Farm",
-                                WardId = 61
-                            },
-                            new
-                            {
-                                Id = 19,
-                                Name = "Mithangar",
-                                WardId = 61
-                            },
-                            new
-                            {
-                                Id = 20,
-                                Name = "Plain Street",
-                                WardId = 61
-                            },
-                            new
-                            {
-                                Id = 21,
-                                Name = "Sandfields",
-                                WardId = 61
-                            },
-                            new
-                            {
-                                Id = 22,
-                                Name = "Umbhayi",
-                                WardId = 61
-                            },
-                            new
-                            {
-                                Id = 23,
-                                Name = "Watsonia",
-                                WardId = 61
-                            },
-                            new
-                            {
-                                Id = 24,
-                                Name = "Burbreeze",
-                                WardId = 62
-                            },
-                            new
-                            {
-                                Id = 25,
-                                Name = "Fairbreeze",
-                                WardId = 62
-                            },
-                            new
-                            {
-                                Id = 26,
-                                Name = "Flamingo Heights",
-                                WardId = 62
-                            },
-                            new
-                            {
-                                Id = 27,
-                                Name = "Gandhi’s Hill",
-                                WardId = 62
-                            },
-                            new
-                            {
-                                Id = 28,
-                                Name = "Hambanathi",
-                                WardId = 62
-                            },
-                            new
-                            {
-                                Id = 29,
-                                Name = "Lauriston",
-                                WardId = 62
-                            },
-                            new
-                            {
-                                Id = 30,
-                                Name = "Magwaveni",
-                                WardId = 62
-                            },
-                            new
-                            {
-                                Id = 31,
-                                Name = "Maidstone Village",
-                                WardId = 62
-                            },
-                            new
-                            {
-                                Id = 32,
-                                Name = "OThongathi CBD / Tongaat Central",
-                                WardId = 62
-                            },
-                            new
-                            {
-                                Id = 33,
-                                Name = "Riverside AH",
-                                WardId = 62
-                            },
-                            new
-                            {
-                                Id = 34,
-                                Name = "Tongaat Industrial / Trurolands",
-                                WardId = 62
-                            },
-                            new
-                            {
-                                Id = 35,
-                                Name = "Vanrova",
-                                WardId = 62
-                            });
-                });
-
-            modelBuilder.Entity("MunicipalReportingAPI.Models.Ward", b =>
-                {
-                    b.Property<int>("Id")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Wards");
-
-                    b.HasData(
-                            new
-                            {
-                                Id = 58,
-                                Name = "Ward 58"
-                            },
-                            new
-                            {
-                                Id = 61,
-                                Name = "Ward 61"
-                            },
-                            new
-                            {
-                                Id = 62,
-                                Name = "Ward 62"
-                            });
-                });
-
             modelBuilder.Entity("MunicipalReportingAPI.Models.ApplicationUser", b =>
                 {
                     b.Property<int>("Id")
@@ -500,6 +235,239 @@ namespace MunicipalReportingAPI.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("MunicipalReportingAPI.Models.Area", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<int>("WardId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WardId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Areas");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Name = "Brake Village",
+                            WardId = 58
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Name = "Canelands",
+                            WardId = 58
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Name = "Casuarina",
+                            WardId = 58
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Name = "Desainagar",
+                            WardId = 58
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Name = "Ghandinagar",
+                            WardId = 58
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Name = "Hammonds Farm",
+                            WardId = 58
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Name = "King Shaka International Airport zone",
+                            WardId = 58
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Name = "La Mercy",
+                            WardId = 58
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Name = "Lungelani",
+                            WardId = 58
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Name = "Pholani",
+                            WardId = 58
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Name = "Sastri Circle / Belgate",
+                            WardId = 58
+                        },
+                        new
+                        {
+                            Id = 12,
+                            Name = "Thuthukani",
+                            WardId = 58
+                        },
+                        new
+                        {
+                            Id = 13,
+                            Name = "Tongaat Beach / Westbrook",
+                            WardId = 58
+                        },
+                        new
+                        {
+                            Id = 14,
+                            Name = "Belvedere (including Belvedere North)",
+                            WardId = 61
+                        },
+                        new
+                        {
+                            Id = 15,
+                            Name = "Buffelsdale",
+                            WardId = 61
+                        },
+                        new
+                        {
+                            Id = 16,
+                            Name = "Chelmsford Heights",
+                            WardId = 61
+                        },
+                        new
+                        {
+                            Id = 17,
+                            Name = "Emona Sunhill",
+                            WardId = 61
+                        },
+                        new
+                        {
+                            Id = 18,
+                            Name = "Gwalas Farm",
+                            WardId = 61
+                        },
+                        new
+                        {
+                            Id = 19,
+                            Name = "Mithangar",
+                            WardId = 61
+                        },
+                        new
+                        {
+                            Id = 20,
+                            Name = "Plain Street",
+                            WardId = 61
+                        },
+                        new
+                        {
+                            Id = 21,
+                            Name = "Sandfields",
+                            WardId = 61
+                        },
+                        new
+                        {
+                            Id = 22,
+                            Name = "Umbhayi",
+                            WardId = 61
+                        },
+                        new
+                        {
+                            Id = 23,
+                            Name = "Watsonia",
+                            WardId = 61
+                        },
+                        new
+                        {
+                            Id = 24,
+                            Name = "Burbreeze",
+                            WardId = 62
+                        },
+                        new
+                        {
+                            Id = 25,
+                            Name = "Fairbreeze",
+                            WardId = 62
+                        },
+                        new
+                        {
+                            Id = 26,
+                            Name = "Flamingo Heights",
+                            WardId = 62
+                        },
+                        new
+                        {
+                            Id = 27,
+                            Name = "Gandhi’s Hill",
+                            WardId = 62
+                        },
+                        new
+                        {
+                            Id = 28,
+                            Name = "Hambanathi",
+                            WardId = 62
+                        },
+                        new
+                        {
+                            Id = 29,
+                            Name = "Lauriston",
+                            WardId = 62
+                        },
+                        new
+                        {
+                            Id = 30,
+                            Name = "Magwaveni",
+                            WardId = 62
+                        },
+                        new
+                        {
+                            Id = 31,
+                            Name = "Maidstone Village",
+                            WardId = 62
+                        },
+                        new
+                        {
+                            Id = 32,
+                            Name = "OThongathi CBD / Tongaat Central",
+                            WardId = 62
+                        },
+                        new
+                        {
+                            Id = 33,
+                            Name = "Riverside AH",
+                            WardId = 62
+                        },
+                        new
+                        {
+                            Id = 34,
+                            Name = "Tongaat Industrial / Trurolands",
+                            WardId = 62
+                        },
+                        new
+                        {
+                            Id = 35,
+                            Name = "Vanrova",
+                            WardId = 62
+                        });
+                });
+
             modelBuilder.Entity("MunicipalReportingAPI.Models.Issue", b =>
                 {
                     b.Property<int>("Id")
@@ -529,6 +497,9 @@ namespace MunicipalReportingAPI.Migrations
 
                     b.Property<double>("Longitude")
                         .HasColumnType("float");
+
+                    b.Property<DateTime?>("ScheduledAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -671,6 +642,38 @@ namespace MunicipalReportingAPI.Migrations
                     b.ToTable("RevokedTokens");
                 });
 
+            modelBuilder.Entity("MunicipalReportingAPI.Models.Ward", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Wards");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 58,
+                            Name = "Ward 58"
+                        },
+                        new
+                        {
+                            Id = 61,
+                            Name = "Ward 61"
+                        },
+                        new
+                        {
+                            Id = 62,
+                            Name = "Ward 62"
+                        });
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<int>", null)
@@ -743,17 +746,6 @@ namespace MunicipalReportingAPI.Migrations
                     b.Navigation("Ward");
                 });
 
-            modelBuilder.Entity("MunicipalReportingAPI.Models.RefreshToken", b =>
-                {
-                    b.HasOne("MunicipalReportingAPI.Models.ApplicationUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("MunicipalReportingAPI.Models.Issue", b =>
                 {
                     b.HasOne("MunicipalReportingAPI.Models.Area", "Area")
@@ -770,6 +762,17 @@ namespace MunicipalReportingAPI.Migrations
                     b.Navigation("Area");
 
                     b.Navigation("Supervisor");
+                });
+
+            modelBuilder.Entity("MunicipalReportingAPI.Models.RefreshToken", b =>
+                {
+                    b.HasOne("MunicipalReportingAPI.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("MunicipalReportingAPI.Models.Report", b =>

@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 
 import 'CheckStatus.dart';
@@ -30,11 +31,13 @@ class _OtherReportsPageState extends State<OtherReportsPage> {
   @override
   Widget build(BuildContext context) {
     final isSupervisor = AuthStore.currentUser?.isStaff == true;
+
     final filteredReports = selectedFilter == 'All'
         ? reports
         : reports
-              .where((report) => report.issueType == selectedFilter)
-              .toList();
+        .where((report) => report.issueType == selectedFilter)
+        .toList();
+
     final groupedReports = ReportStore.groupReports(filteredReports);
 
     return Scaffold(
@@ -75,7 +78,9 @@ class _OtherReportsPageState extends State<OtherReportsPage> {
                       onPressed: _showFilterDialog,
                       icon: const Icon(Icons.filter_list),
                       label: Text(
-                        selectedFilter == 'All' ? 'Filter' : selectedFilter,
+                        selectedFilter == 'All'
+                            ? 'Filter'
+                            : selectedFilter,
                       ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
@@ -88,17 +93,17 @@ class _OtherReportsPageState extends State<OtherReportsPage> {
               Expanded(
                 child: groupedReports.isEmpty
                     ? const Center(
-                        child: Text(
-                          'No reports found for this filter.',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      )
+                  child: Text(
+                    'No reports found for this filter.',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                )
                     : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                        itemCount: groupedReports.length,
-                        itemBuilder: (context, index) =>
-                            _reportCard(groupedReports[index]),
-                      ),
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                  itemCount: groupedReports.length,
+                  itemBuilder: (context, index) =>
+                      _reportCard(groupedReports[index]),
+                ),
               ),
             ],
           ),
@@ -125,7 +130,10 @@ class _OtherReportsPageState extends State<OtherReportsPage> {
             icon: Icon(Icons.assignment),
             label: 'Status',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.help), label: 'Help'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.help),
+            label: 'Help',
+          ),
         ],
       ),
     );
@@ -135,9 +143,14 @@ class _OtherReportsPageState extends State<OtherReportsPage> {
     return Card(
       margin: const EdgeInsets.only(bottom: 14),
       elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+      ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 8,
+        ),
         child: ReportSummaryTile(group: group),
       ),
     );
@@ -145,6 +158,13 @@ class _OtherReportsPageState extends State<OtherReportsPage> {
 
   void _showFilterDialog() {
     String temporaryFilter = selectedFilter;
+
+    // Get all available report types for filtering.
+    final List<String> filterOptions = [
+      'All',
+      ...reports.map((report) => report.issueType.toString()).toSet(),
+    ];
+
     showDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -153,17 +173,19 @@ class _OtherReportsPageState extends State<OtherReportsPage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ...[
-                'All',
-                ...reports.map((report) => report.issueType).toSet(),
-              ].map(
-                (filter) => RadioListTile<String>(
-                  title: Text(filter == 'All' ? 'All reports' : filter),
+              ...filterOptions.map(
+                    (String filter) => RadioListTile<String>(
+                  title: Text(
+                    filter == 'All' ? 'All reports' : filter,
+                  ),
                   value: filter,
                   groupValue: temporaryFilter,
-                  onChanged: (value) {
+                  onChanged: (String? value) {
                     if (value == null) return;
-                    setDialogState(() => temporaryFilter = value);
+
+                    setDialogState(() {
+                      temporaryFilter = value;
+                    });
                   },
                 ),
               ),
@@ -176,7 +198,10 @@ class _OtherReportsPageState extends State<OtherReportsPage> {
             ),
             ElevatedButton(
               onPressed: () {
-                setState(() => selectedFilter = temporaryFilter);
+                setState(() {
+                  selectedFilter = temporaryFilter;
+                });
+
                 Navigator.pop(dialogContext);
               },
               child: const Text('Apply'),

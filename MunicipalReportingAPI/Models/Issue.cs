@@ -19,6 +19,10 @@ namespace MunicipalReportingAPI.Models
         public DateTime? UpdatedAt { get; set; }
 
         public int? SupervisorId { get; set; }
+        // "I added public DateTime? ScheduledAt { get; set; }
+        // to show the supervisor
+        // run a new EF core migration to update the database."
+        public DateTime? ScheduledAt { get; set; }
         public ApplicationUser? Supervisor { get; set; }
 
         public ICollection<Report> Reports { get; set; } = new List<Report>();

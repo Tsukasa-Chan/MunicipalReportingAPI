@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 
 import 'auth_api.dart';
@@ -19,6 +20,12 @@ class _ForgotPageState extends State<ForgotPage> {
   late final AuthApi _authApi;
   late final bool _ownsAuthApi;
 
+  static const Color _orange = Color(0xFFC94F1B);
+  static const Color _cream = Color(0xFFFFF8F4);
+  static const Color _darkText = Color(0xFF292524);
+  static const Color _secondaryText = Color(0xFF78716C);
+  static const Color _borderColor = Color(0xFFE8C7B8);
+
   bool _isSending = false;
   bool _emailSent = false;
   String _sentTo = '';
@@ -35,14 +42,47 @@ class _ForgotPageState extends State<ForgotPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _cream,
+
       appBar: AppBar(
-        title: const Text('Forgot Password'),
-        backgroundColor: Colors.transparent,
+        title: const Text(
+          'Forgot Password',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.3,
+          ),
+        ),
+        backgroundColor: _orange,
+        foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-        child: _emailSent ? _buildSentView() : _buildFormView(),
+
+      // Full-screen cream-to-peach background
+      body: SizedBox.expand(
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFFFFF8F4),
+                Color(0xFFFFE9DC),
+              ],
+            ),
+          ),
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 40,
+              ),
+              child: _emailSent
+                  ? _buildSentView()
+                  : _buildFormView(),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -53,58 +93,133 @@ class _ForgotPageState extends State<ForgotPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Forgot password icon
           _buildLogo(),
-          const SizedBox(height: 16),
+
+          const SizedBox(height: 32),
+
+          // Heading
           const Text(
             'Forgot Password',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 34,
+              fontWeight: FontWeight.bold,
+              color: _darkText,
+              letterSpacing: 0.5,
+            ),
           ),
-          const SizedBox(height: 12),
+
+          const SizedBox(height: 10),
+
+          // Description
           const Text(
-            'Enter your email and we will send you a link to choose a '
-                'new password.',
+            'Enter your email and we will send you a link to choose a new password.',
             textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              color: _secondaryText,
+              height: 1.5,
+            ),
           ),
-          const SizedBox(height: 24),
+
+          const SizedBox(height: 38),
+
+          // Email field
           TextFormField(
             controller: emailController,
             keyboardType: TextInputType.emailAddress,
             textCapitalization: TextCapitalization.none,
             validator: _validateEmail,
-            decoration: const InputDecoration(
+            style: const TextStyle(
+              color: _darkText,
+              fontSize: 16,
+            ),
+            decoration: InputDecoration(
               labelText: 'Email',
               hintText: 'example@gmail.com',
+              prefixIcon: const Icon(
+                Icons.email_outlined,
+                color: _orange,
+              ),
+              labelStyle: const TextStyle(
+                color: _secondaryText,
+              ),
+              floatingLabelStyle: const TextStyle(
+                color: _orange,
+              ),
               filled: true,
               fillColor: Colors.white,
-              border: OutlineInputBorder(),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 18,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(
+                  color: _borderColor,
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(
+                  color: _borderColor,
+                  width: 1.2,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(
+                  color: _orange,
+                  width: 1.5,
+                ),
+              ),
             ),
           ),
+
+          // Error message
           if (_errorMessage != null) ...[
             const SizedBox(height: 14),
             Text(
               _errorMessage!,
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.red.shade700),
+              style: TextStyle(
+                color: Colors.red.shade700,
+                fontSize: 14,
+              ),
             ),
           ],
+
           const SizedBox(height: 24),
-          ElevatedButton(
+
+          // Send reset link button
+          _actionButton(
+            label: 'Send reset link',
             onPressed: _isSending ? null : _sendLink,
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size.fromHeight(52),
-            ),
-            child: _isSending
-                ? const SizedBox(
-              height: 22,
-              width: 22,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-                : const Text('Send reset link'),
+            isLoading: _isSending,
           ),
+
+          const SizedBox(height: 12),
+
+          // Back button
           TextButton(
-            onPressed: _isSending ? null : () => Navigator.pop(context),
-            child: const Text('Back'),
+            onPressed: _isSending
+                ? null
+                : () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              foregroundColor: _orange,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 12,
+              ),
+            ),
+            child: const Text(
+              'Back',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -115,70 +230,174 @@ class _ForgotPageState extends State<ForgotPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 16),
-        const Icon(
+        // Email sent icon
+        _buildIconContainer(
           Icons.mark_email_read_outlined,
-          size: 64,
-          color: Color(0xFFC94F1B),
         ),
-        const SizedBox(height: 16),
+
+        const SizedBox(height: 32),
+
+        // Confirmation heading
         const Text(
           'Check your email',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 34,
+            fontWeight: FontWeight.bold,
+            color: _darkText,
+            letterSpacing: 0.5,
+          ),
         ),
-        const SizedBox(height: 12),
+
+        const SizedBox(height: 10),
+
         Text(
           'If an account exists for ${AuthStore.maskEmail(_sentTo)}, we have '
               'sent a link to reset your password.',
           textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 15,
+            color: _secondaryText,
+            height: 1.5,
+          ),
         ),
+
         const SizedBox(height: 12),
+
         const Text(
           'Open the email and click the link to choose a new password. '
               'Then come back here and log in.',
           textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 24),
-        ElevatedButton(
-          onPressed: () => Navigator.pop(context),
-          style: ElevatedButton.styleFrom(
-            minimumSize: const Size.fromHeight(52),
+          style: TextStyle(
+            fontSize: 15,
+            color: _secondaryText,
+            height: 1.5,
           ),
-          child: const Text('Back to login'),
         ),
+
+        const SizedBox(height: 38),
+
+        // Back to login button
+        _actionButton(
+          label: 'Back to login',
+          onPressed: () => Navigator.pop(context),
+        ),
+
+        const SizedBox(height: 12),
+
+        // Use another email
         TextButton(
           onPressed: () => setState(() => _emailSent = false),
-          child: const Text('Use a different email'),
+          style: TextButton.styleFrom(
+            foregroundColor: _orange,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 12,
+            ),
+          ),
+          child: const Text(
+            'Use a different email',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
       ],
     );
   }
 
+  // Forgot password logo
   Widget _buildLogo() {
+    return _buildIconContainer(
+      Icons.lock_reset_outlined,
+    );
+  }
+
+  // Rounded icon container matching the other pages
+  Widget _buildIconContainer(IconData icon) {
     return Center(
       child: Container(
-        width: 78,
-        height: 78,
-        decoration: const BoxDecoration(
+        padding: const EdgeInsets.all(5),
+        decoration: BoxDecoration(
           color: Colors.white,
-          shape: BoxShape.circle,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: _orange.withValues(alpha: 0.12),
+              blurRadius: 25,
+              offset: const Offset(0, 10),
+            ),
+          ],
         ),
-        child: const Icon(
-          Icons.location_city_rounded,
-          size: 42,
-          color: Color(0xFFC94F1B),
+        child: Container(
+          width: 110,
+          height: 110,
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF1E8),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Icon(
+            icon,
+            size: 65,
+            color: _orange,
+          ),
         ),
       ),
     );
   }
 
-  // Only checks that it looks like an email. The backend decides if an
-  // account exists. Admin and supervisor accounts can use other domains.
+  // Orange buttons matching the Startup page
+  Widget _actionButton({
+    required String label,
+    required VoidCallback? onPressed,
+    bool isLoading = false,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _orange,
+          foregroundColor: Colors.white,
+          elevation: 4,
+          shadowColor: _orange.withValues(alpha: 0.25),
+          padding: const EdgeInsets.symmetric(
+            vertical: 17,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        child: isLoading
+            ? const SizedBox(
+          height: 22,
+          width: 22,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: Colors.white,
+          ),
+        )
+            : Text(
+          label,
+          style: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.3,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Only checks the email format.
+  // The backend decides whether an account exists.
   String? _validateEmail(String? value) {
     final email = value?.trim() ?? '';
 
-    if (email.isEmpty) return 'Please enter your email';
+    if (email.isEmpty) {
+      return 'Please enter your email';
+    }
 
     if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) {
       return 'Please enter a valid email';
@@ -187,6 +406,7 @@ class _ForgotPageState extends State<ForgotPage> {
     return null;
   }
 
+  // Send password reset link through the backend
   Future<void> _sendLink() async {
     if (_isSending) return;
     if (!_formKey.currentState!.validate()) return;
@@ -212,16 +432,21 @@ class _ForgotPageState extends State<ForgotPage> {
     } on AuthApiException catch (error) {
       if (!mounted) return;
 
-      setState(() => _errorMessage = error.message);
+      setState(() {
+        _errorMessage = error.message;
+      });
     } catch (_) {
       if (!mounted) return;
 
       setState(() {
-        _errorMessage = 'Unable to send the reset email. Please try again.';
+        _errorMessage =
+        'Unable to send the reset email. Please try again.';
       });
     } finally {
       if (mounted) {
-        setState(() => _isSending = false);
+        setState(() {
+          _isSending = false;
+        });
       }
     }
   }

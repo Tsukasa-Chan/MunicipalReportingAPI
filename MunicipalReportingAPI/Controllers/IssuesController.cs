@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -36,28 +37,44 @@ namespace MunicipalReportingAPI.Controllers
                 Id = i.Id,
                 IssueCategory = i.IssueCategory,
                 IssueType = i.IssueType,
+
                 AreaId = i.AreaId,
                 AreaName = i.Area!.Name,
+
                 WardId = i.Area!.WardId,
                 WardName = i.Area!.Ward!.Name,
+
                 Location = i.Location,
                 Latitude = i.Latitude,
                 Longitude = i.Longitude,
+
                 Status = i.Status,
+
                 SupervisorId = i.SupervisorId,
-                SupervisorName = i.Supervisor != null ? i.Supervisor.FullName : null,
+                SupervisorName = i.Supervisor != null
+                    ? i.Supervisor.FullName
+                    : null,
+
                 CreatedAt = i.CreatedAt,
                 UpdatedAt = i.UpdatedAt,
+                ScheduledAt = i.ScheduledAt,
+
                 ReportCount = i.Reports.Count(),
+
                 OriginalDescription = i.Reports
-                    .OrderBy(r => r.CreatedAt).ThenBy(r => r.Id)
-                    .Select(r => r.Description).FirstOrDefault(),
+                    .OrderBy(r => r.CreatedAt)
+                    .ThenBy(r => r.Id)
+                    .Select(r => r.Description)
+                    .FirstOrDefault(),
+
                 OriginalImageUrl = i.Reports
-                    .OrderBy(r => r.CreatedAt).ThenBy(r => r.Id)
-                    .Select(r => r.ImageUrl).FirstOrDefault()
+                    .OrderBy(r => r.CreatedAt)
+                    .ThenBy(r => r.Id)
+                    .Select(r => r.ImageUrl)
+                    .FirstOrDefault()
             });
 
-        // Public list / map data: one entry per municipal problem
+        // Public list / map data: one entry per municipal problem.
         [HttpGet]
         public async Task<IActionResult> GetAll(
             [FromQuery] ReportStatus? status,
@@ -72,29 +89,48 @@ namespace MunicipalReportingAPI.Controllers
         {
             var query = _context.Issues.AsQueryable();
 
-            if (status.HasValue) query = query.Where(i => i.Status == status.Value);
-            if (category.HasValue) query = query.Where(i => i.IssueCategory == category.Value);
-            if (issueType.HasValue) query = query.Where(i => i.IssueType == issueType.Value);
-            if (supervisorId.HasValue) query = query.Where(i => i.SupervisorId == supervisorId.Value);
-            if (wardId.HasValue) query = query.Where(i => i.Area!.WardId == wardId.Value);
-            if (areaId.HasValue) query = query.Where(i => i.AreaId == areaId.Value);
+            if (status.HasValue)
+                query = query.Where(i => i.Status == status.Value);
 
-            // ?unassigned=true -> issues nobody is responsible for yet
-            if (unassigned == true) query = query.Where(i => i.SupervisorId == null);
+            if (category.HasValue)
+                query = query.Where(i => i.IssueCategory == category.Value);
 
-            // ?minReports=2 -> issues confirmed by several residents
-            if (minReports.HasValue) query = query.Where(i => i.Reports.Count() >= minReports.Value);
+            if (issueType.HasValue)
+                query = query.Where(i => i.IssueType == issueType.Value);
 
-            // ?sortBy=reports -> most-reported first (default: newest first)
-            var ordered = string.Equals(sortBy, "reports", StringComparison.OrdinalIgnoreCase)
-                ? query.OrderByDescending(i => i.Reports.Count()).ThenByDescending(i => i.CreatedAt)
+            if (supervisorId.HasValue)
+                query = query.Where(i => i.SupervisorId == supervisorId.Value);
+
+            if (wardId.HasValue)
+                query = query.Where(i => i.Area!.WardId == wardId.Value);
+
+            if (areaId.HasValue)
+                query = query.Where(i => i.AreaId == areaId.Value);
+
+            // ?unassigned=true -> issues nobody is responsible for yet.
+            if (unassigned == true)
+                query = query.Where(i => i.SupervisorId == null);
+
+            // ?minReports=2 -> issues confirmed by several residents.
+            if (minReports.HasValue)
+                query = query.Where(i => i.Reports.Count() >= minReports.Value);
+
+            // ?sortBy=reports -> most-reported first (default: newest first).
+            var ordered = string.Equals(
+                sortBy,
+                "reports",
+                StringComparison.OrdinalIgnoreCase)
+                ? query.OrderByDescending(i => i.Reports.Count())
+                    .ThenByDescending(i => i.CreatedAt)
                 : query.OrderByDescending(i => i.CreatedAt);
 
             var issues = await ProjectIssues(ordered).ToListAsync();
+
             return Ok(issues);
         }
 
-        // Open issues near a point (nearest first). Radius defaults to the configured match radius.
+        // Open issues near a point (nearest first).
+        // Radius defaults to the configured match radius.
         // Registered before {id} so "nearby" is never treated as an id.
         [HttpGet("nearby")]
         public async Task<IActionResult> GetNearby(
@@ -104,57 +140,92 @@ namespace MunicipalReportingAPI.Controllers
             [FromQuery] IssueType? issueType)
         {
             var radius = radiusMeters ?? _issueService.MatchRadiusMeters;
+
             if (radius <= 0 || radius > 50000)
             {
-                return BadRequest("radiusMeters must be between 0 and 50000");
+                return BadRequest(
+                    "radiusMeters must be between 0 and 50000");
             }
 
-            var nearby = await _issueService.FindNearbyAsync(latitude, longitude, radius, issueType);
+            var nearby = await _issueService.FindNearbyAsync(
+                latitude,
+                longitude,
+                radius,
+                issueType);
+
             var ids = nearby.Select(n => n.Issue.Id).ToList();
 
-            var dtos = await ProjectIssues(_context.Issues.Where(i => ids.Contains(i.Id))).ToListAsync();
+            var dtos = await ProjectIssues(
+                _context.Issues.Where(i => ids.Contains(i.Id)))
+                .ToListAsync();
 
             foreach (var dto in dtos)
             {
-                dto.DistanceMeters = Math.Round(nearby.First(n => n.Issue.Id == dto.Id).DistanceMeters, 1);
+                dto.DistanceMeters = Math.Round(
+                    nearby.First(n => n.Issue.Id == dto.Id).DistanceMeters,
+                    1);
             }
 
             return Ok(dtos.OrderBy(d => d.DistanceMeters));
         }
 
-        // issues vs reports: "35 issues, 142 reports"
-        // Optional filters: ?wardId=58 or ?areaId=3 (or both). No filter = whole system.
-        // Counts are of ISSUES, so "3 water issues" means 3 distinct problems, however many
-        // residents reported them.
+        // Issues vs reports: "35 issues, 142 reports".
+        // Optional filters: ?wardId=58 or ?areaId=3 (or both).
+        // No filter = whole system.
+        // Counts are of ISSUES, not individual resident reports.
+
+
+        // Get issue statistics for an area or ward.
         [HttpGet("stats")]
-        public async Task<IActionResult> GetStats([FromQuery] int? wardId, [FromQuery] int? areaId)
+        public async Task<IActionResult> GetStats(
+            [FromQuery] int? wardId,
+            [FromQuery] int? areaId)
         {
-            if (wardId.HasValue && !await _context.Wards.AnyAsync(w => w.Id == wardId.Value))
+            if (wardId.HasValue &&
+                !await _context.Wards.AnyAsync(w => w.Id == wardId.Value))
             {
                 return NotFound("Ward not found");
             }
 
-            if (areaId.HasValue && !await _context.Areas.AnyAsync(a => a.Id == areaId.Value))
+            if (areaId.HasValue &&
+                !await _context.Areas.AnyAsync(a => a.Id == areaId.Value))
             {
                 return NotFound("Area not found");
             }
 
+            // Get the issues for the selected area or ward.
             var issues = _context.Issues.AsQueryable();
-            if (wardId.HasValue) issues = issues.Where(i => i.Area!.WardId == wardId.Value);
-            if (areaId.HasValue) issues = issues.Where(i => i.AreaId == areaId.Value);
 
-            var grouped = await issues
+            if (wardId.HasValue)
+                issues = issues.Where(i => i.Area!.WardId == wardId.Value);
+
+            if (areaId.HasValue)
+                issues = issues.Where(i => i.AreaId == areaId.Value);
+
+            // Get each issue's category, status and number of reports.
+            var issueData = await issues
+                .Select(i => new
+                {
+                    i.IssueCategory,
+                    i.Status,
+                    ReportCount = i.Reports.Count()
+                })
+                .ToListAsync();
+
+            // Group the results after loading them from the database.
+            var grouped = issueData
                 .GroupBy(i => new { i.IssueCategory, i.Status })
                 .Select(g => new
                 {
                     g.Key.IssueCategory,
                     g.Key.Status,
                     Count = g.Count(),
-                    Reports = g.Sum(i => i.Reports.Count())
+                    Reports = g.Sum(i => i.ReportCount)
                 })
-                .ToListAsync();
+                .ToList();
 
-            int Count(ReportStatus s) => grouped.Where(x => x.Status == s).Sum(x => x.Count);
+            int Count(ReportStatus s) =>
+                grouped.Where(x => x.Status == s).Sum(x => x.Count);
 
             var stats = new IssueStatsDTO
             {
@@ -164,14 +235,20 @@ namespace MunicipalReportingAPI.Controllers
                 Resolved = Count(ReportStatus.Resolved),
                 TotalReports = grouped.Sum(x => x.Reports)
             };
+
             stats.ActiveIssues = stats.Reported + stats.InProgress;
             stats.ResolvedIssues = stats.Resolved;
 
+            // Calculate statistics for each category.
             stats.ByCategory = Enum.GetValues<IssueCategory>()
                 .Select(c =>
                 {
-                    var rows = grouped.Where(x => x.IssueCategory == c).ToList();
-                    int Of(ReportStatus s) => rows.Where(x => x.Status == s).Sum(x => x.Count);
+                    var rows = grouped
+                        .Where(x => x.IssueCategory == c)
+                        .ToList();
+
+                    int Of(ReportStatus s) =>
+                        rows.Where(x => x.Status == s).Sum(x => x.Count);
 
                     return new CategoryStatsDTO
                     {
@@ -180,7 +257,8 @@ namespace MunicipalReportingAPI.Controllers
                         Reported = Of(ReportStatus.Reported),
                         InProgress = Of(ReportStatus.InProgress),
                         Resolved = Of(ReportStatus.Resolved),
-                        Active = Of(ReportStatus.Reported) + Of(ReportStatus.InProgress),
+                        Active = Of(ReportStatus.Reported) +
+                                 Of(ReportStatus.InProgress),
                         TotalReports = rows.Sum(x => x.Reports)
                     };
                 })
@@ -189,10 +267,13 @@ namespace MunicipalReportingAPI.Controllers
             return Ok(stats);
         }
 
+
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
-            var issue = await ProjectIssues(_context.Issues.Where(i => i.Id == id)).FirstOrDefaultAsync();
+            var issue = await ProjectIssues(
+                _context.Issues.Where(i => i.Id == id))
+                .FirstOrDefaultAsync();
 
             if (issue == null)
             {
@@ -215,7 +296,8 @@ namespace MunicipalReportingAPI.Controllers
             var reports = await _context.Reports
                 .Where(r => r.IssueId == id)
                 .Include(r => r.User)
-                .OrderBy(r => r.CreatedAt).ThenBy(r => r.Id)
+                .OrderBy(r => r.CreatedAt)
+                .ThenBy(r => r.Id)
                 .ToListAsync();
 
             return Ok(reports.Select(IssueReportDTO.FromReport));
@@ -223,18 +305,24 @@ namespace MunicipalReportingAPI.Controllers
 
         [Authorize(Roles = "Admin,Supervisor")]
         [HttpPut("{id}/status")]
-        public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateStatusDTO dto)
+        public async Task<IActionResult> UpdateStatus(
+            int id,
+            [FromBody] UpdateStatusDTO dto)
         {
             var issue = await _context.Issues.FindAsync(id);
+
             if (issue == null)
             {
                 return NotFound();
             }
 
-            // Admins can change any issue. Supervisors only the issues an admin assigned to them.
+            // Admins can change any issue.
+            // Supervisors can only change issues assigned to them.
             if (!User.IsInRole("Admin"))
             {
-                var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+                var currentUserId = int.Parse(
+                    User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
                 if (issue.SupervisorId != currentUserId)
                 {
                     return Forbid();
@@ -243,36 +331,62 @@ namespace MunicipalReportingAPI.Controllers
 
             issue.Status = dto.Status;
             issue.UpdatedAt = DateTime.UtcNow;
+
             await _context.SaveChangesAsync();
 
-            var result = await ProjectIssues(_context.Issues.Where(i => i.Id == id)).FirstAsync();
+            var result = await ProjectIssues(
+                _context.Issues.Where(i => i.Id == id))
+                .FirstAsync();
+
             return Ok(result);
         }
 
+        // Assign or remove a supervisor from an issue.
         [Authorize(Roles = "Admin")]
         [HttpPut("{id}/supervisor")]
-        public async Task<IActionResult> AssignSupervisor(int id, [FromBody] AssignSupervisorDTO dto)
+        public async Task<IActionResult> AssignSupervisor(
+            int id,
+            [FromBody] AssignSupervisorDTO dto)
         {
             var issue = await _context.Issues.FindAsync(id);
+
             if (issue == null)
             {
                 return NotFound();
             }
 
+            // Check that the selected user has the Supervisor role.
             if (dto.SupervisorId.HasValue)
             {
-                var supervisor = await _userManager.FindByIdAsync(dto.SupervisorId.Value.ToString());
-                if (supervisor == null || !await _userManager.IsInRoleAsync(supervisor, "Supervisor"))
+                var supervisor = await _userManager.FindByIdAsync(
+                    dto.SupervisorId.Value.ToString());
+
+                if (supervisor == null ||
+                    !await _userManager.IsInRoleAsync(
+                        supervisor,
+                        "Supervisor"))
                 {
-                    return BadRequest("The selected user is not a supervisor");
+                    return BadRequest(
+                        "The selected user is not a supervisor");
                 }
             }
 
+            // Record when the issue is assigned.
+            var now = DateTime.UtcNow;
+
             issue.SupervisorId = dto.SupervisorId;
-            issue.UpdatedAt = DateTime.UtcNow;
+            issue.ScheduledAt = dto.SupervisorId.HasValue
+                ? now
+                : null;
+
+            issue.UpdatedAt = now;
+
             await _context.SaveChangesAsync();
 
-            var result = await ProjectIssues(_context.Issues.Where(i => i.Id == id)).FirstAsync();
+            var result = await ProjectIssues(
+                _context.Issues.Where(i => i.Id == id))
+                .FirstAsync();
+
             return Ok(result);
         }
     }

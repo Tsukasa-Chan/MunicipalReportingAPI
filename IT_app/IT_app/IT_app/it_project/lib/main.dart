@@ -11,12 +11,14 @@ import 'Pages/auth_api.dart';
 import 'Pages/auth_store.dart';
 import 'Pages/report_store.dart';
 
+// starts the app and loads saved reports.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ReportStore.initialize();
   runApp(const MyApp());
 }
 
+// sets up the main application.
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
@@ -25,7 +27,8 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
-  // Lets this class move to another screen from anywhere in the app.
+
+  // allow navigation from anywhere in the app.
   final _navigatorKey = GlobalKey<NavigatorState>();
 
   bool _checkingSession = false;
@@ -43,8 +46,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  // Runs when the app comes back to the screen, for example after the user
-  // clicks the email-change link in the browser and returns.
+  // checks the session when the app is reopened.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -52,26 +54,27 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     }
   }
 
+  // checks whether the users session is on.
   Future<void> _checkSession() async {
     if (_checkingSession || !AuthStore.isSignedIn) return;
 
     _checkingSession = true;
 
     try {
-      // Asks the backend for the profile. If the login was ended (email or
-      // password changed), this throws a "session expired" error.
       await AuthStore.reloadProfile();
     } on AuthApiException catch (error) {
       if (error.isSessionExpired) {
         _sendToStart();
       }
     } catch (_) {
-      // No connection: leave the person where they are.
+
+      // keeps the user on the current screen if offline.
     } finally {
       _checkingSession = false;
     }
   }
 
+  // returns the user to the startup screen.
   void _sendToStart() {
     final navigator = _navigatorKey.currentState;
     if (navigator == null) return;
@@ -84,6 +87,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     _showSessionEndedDialog();
   }
 
+  // informs the user that their session has ended.
   void _showSessionEndedDialog() {
     final dialogContext = _navigatorKey.currentContext;
     if (dialogContext == null || _showingSessionDialog) return;
@@ -108,13 +112,12 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     ).whenComplete(() => _showingSessionDialog = false);
   }
 
-  // This widget is the root of your application.
+  // builds the app's main layout and theme.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: _navigatorKey,
-      debugShowCheckedModeBanner:
-      false, // removes the demo tag on the top right corner
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFF5F5F5),
@@ -142,7 +145,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFFC94F1B),
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(8)),
+            ),
           ),
         ),
       ),
@@ -152,7 +157,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           child: child,
         );
       },
-      home: const StartupPage(), // Shows the animated startup screen first
+      home: const StartupPage(),
     );
   }
 }
