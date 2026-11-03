@@ -17,11 +17,12 @@ class SupervisorSchedulePage extends StatefulWidget {
 }
 class _SupervisorSchedulePageState
     extends State<SupervisorSchedulePage> {
-  static const Color _orange = Color(0xFFC94F1B);
+  // Darker orange used throughout the supervisor screens.
+  static const Color _orange = supervisorPrimaryColor;
   static const Color _darkText = Color(0xFF292524);
   static const Color _secondaryText = Color(0xFF78716C);
-  static const Color _cream = Color(0xFFFFF8F4);
-  static const Color _borderColor = Color(0xFFE8C7B8);
+  static const Color _cream = Color(0xFFF5F5F5);
+  static const Color _borderColor = Color(0xFFE7E5E4);
   DateTime _now = DateTime.now();
   Timer? _timer;
   List<ReportRequest> _reports = [];
@@ -136,7 +137,7 @@ class _SupervisorSchedulePageState
   Widget build(BuildContext context) {
     final groups = _getGroups();
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: const Color(0xFFF5F5F5),
       body: Container(
         decoration: pageBackgroundDecoration(isSupervisor: true),
         child: SafeArea(
@@ -435,7 +436,7 @@ class _SupervisorSchedulePageState
                       vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFE9DC),
+                      color: const Color(0xFFF5EBE7),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -469,11 +470,12 @@ class SupervisorScheduledJobPage extends StatefulWidget {
 }
 class _SupervisorScheduledJobPageState
     extends State<SupervisorScheduledJobPage> {
-  static const Color _orange = Color(0xFFC94F1B);
+  // Darker orange used throughout the supervisor screens.
+  static const Color _orange = supervisorPrimaryColor;
   static const Color _darkText = Color(0xFF292524);
   static const Color _secondaryText = Color(0xFF78716C);
-  static const Color _borderColor = Color(0xFFE8C7B8);
-  static const Color _cream = Color(0xFFFFF8F4);
+  static const Color _borderColor = Color(0xFFE7E5E4);
+  static const Color _cream = Color(0xFFF5F5F5);
   late ReportGroup _group;
   @override
   void initState() {
@@ -512,7 +514,7 @@ class _SupervisorScheduledJobPageState
   Widget build(BuildContext context) {
     final report = _group.firstReport;
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
         title: const Text(
           'Scheduled Job',

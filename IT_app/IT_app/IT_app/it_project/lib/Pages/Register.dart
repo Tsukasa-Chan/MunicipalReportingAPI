@@ -122,6 +122,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     _field(
                       controller: fullNameController,
                       label: 'Full Name',
+                      inputFormatters: [
+                        FilteringTextInputFormatter.deny(RegExp(r'[0-9]')),
+                      ],
                       validator: (value) => _required(value, 'full name'),
                     ),
 

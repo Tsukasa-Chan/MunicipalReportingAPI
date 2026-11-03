@@ -14,11 +14,7 @@ class AuthApiException implements Exception {
   // 'email_not_verified'. Null when the backend sent plain text.
   final String? code;
 
-  const AuthApiException(
-      this.message, {
-        this.statusCode,
-        this.code,
-      });
+  const AuthApiException(this.message, {this.statusCode, this.code});
 
   bool get isEmailNotVerified => code == 'email_not_verified';
 
@@ -31,12 +27,10 @@ class AuthApiException implements Exception {
 }
 
 class AuthApi {
-  AuthApi({
-    http.Client? client,
-    String? baseUrl,
-  })  : _client = client ?? http.Client(),
-        _ownsClient = client == null,
-        _baseUrl = _normaliseBaseUrl(baseUrl ?? _configuredBaseUrl());
+  AuthApi({http.Client? client, String? baseUrl})
+    : _client = client ?? http.Client(),
+      _ownsClient = client == null,
+      _baseUrl = _normaliseBaseUrl(baseUrl ?? _configuredBaseUrl());
 
   // Override with --dart-define=API_BASE_URL=https://... for a real phone
   // or for the hosted API.
@@ -94,10 +88,7 @@ class AuthApi {
   }) {
     return _post(
       '/api/Auth/login',
-      {
-        'email': email.trim().toLowerCase(),
-        'password': password,
-      },
+      {'email': email.trim().toLowerCase(), 'password': password},
       acceptedStatuses: {200},
     );
   }
@@ -108,22 +99,13 @@ class AuthApi {
     required String userId,
     required String token,
   }) async {
-    final uri = _endpoint('/api/Auth/confirm-email').replace(
-      queryParameters: {
-        'userId': userId,
-        'token': token,
-      },
-    );
+    final uri = _endpoint(
+      '/api/Auth/confirm-email',
+    ).replace(queryParameters: {'userId': userId, 'token': token});
 
-    final response = await _send(
-          () => _client.get(
-        uri,
-        headers: _headers(),
-      ),
-    );
+    final response = await _send(() => _client.get(uri, headers: _headers()));
 
-    if (response.statusCode < 200 ||
-        response.statusCode >= 300) {
+    if (response.statusCode < 200 || response.statusCode >= 300) {
       throw _exceptionFromResponse(response);
     }
 
@@ -132,21 +114,16 @@ class AuthApi {
 
   // RESEND EMAIL CONFIRMATION
   // Backend: POST /api/Auth/resend-confirmation
-  Future<String> resendEmailConfirmation({
-    required String email,
-  }) async {
+  Future<String> resendEmailConfirmation({required String email}) async {
     final response = await _send(
-          () => _client.post(
+      () => _client.post(
         _endpoint('/api/Auth/resend-confirmation'),
         headers: _headers(),
-        body: jsonEncode({
-          'email': email.trim().toLowerCase(),
-        }),
+        body: jsonEncode({'email': email.trim().toLowerCase()}),
       ),
     );
 
-    if (response.statusCode < 200 ||
-        response.statusCode >= 300) {
+    if (response.statusCode < 200 || response.statusCode >= 300) {
       throw _exceptionFromResponse(response);
     }
 
@@ -155,22 +132,16 @@ class AuthApi {
 
   // Compatibility method for existing pages that call
   // resendEmailVerification(email: email).
-  Future<String> resendEmailVerification({
-    required String email,
-  }) {
+  Future<String> resendEmailVerification({required String email}) {
     return resendEmailConfirmation(email: email);
   }
 
   // REFRESH TOKEN
   // Backend: POST /api/Auth/refresh
-  Future<Map<String, dynamic>> refreshToken({
-    required String refreshToken,
-  }) {
+  Future<Map<String, dynamic>> refreshToken({required String refreshToken}) {
     return _post(
       '/api/Auth/refresh',
-      {
-        'refreshToken': refreshToken,
-      },
+      {'refreshToken': refreshToken},
       acceptedStatuses: {200},
     );
   }
@@ -184,9 +155,7 @@ class AuthApi {
   }) async {
     await _post(
       '/api/Auth/logout',
-      {
-        'refreshToken': refreshToken,
-      },
+      {'refreshToken': refreshToken},
       acceptedStatuses: {200, 204},
       accessToken: accessToken,
     );
@@ -198,14 +167,13 @@ class AuthApi {
     required String accessToken,
   }) async {
     final response = await _send(
-          () => _client.get(
+      () => _client.get(
         _endpoint('/api/Auth/me'),
         headers: _headers(accessToken: accessToken),
       ),
     );
 
-    if (response.statusCode < 200 ||
-        response.statusCode >= 300) {
+    if (response.statusCode < 200 || response.statusCode >= 300) {
       throw _exceptionFromResponse(response);
     }
 
@@ -227,10 +195,7 @@ class AuthApi {
     String? imagePath,
   }) async {
     // CHANGE: MultipartRequest allows the report and image to be sent together.
-    final request = http.MultipartRequest(
-      'POST',
-      _endpoint('/api/Reports'),
-    );
+    final request = http.MultipartRequest('POST', _endpoint('/api/Reports'));
 
     // CHANGE: Do not set Content-Type to application/json for multipart data.
     request.headers.addAll({
@@ -250,16 +215,12 @@ class AuthApi {
 
     // CHANGE: Attach the image only when the user selected one.
     if (imagePath != null && imagePath.trim().isNotEmpty) {
-      request.files.add(
-        await http.MultipartFile.fromPath('Image', imagePath),
-      );
+      request.files.add(await http.MultipartFile.fromPath('Image', imagePath));
     }
 
     // CHANGE: Reuse the existing HTTP client, timeout and error handling.
     final response = await _send(
-          () async => http.Response.fromStream(
-        await _client.send(request),
-      ),
+      () async => http.Response.fromStream(await _client.send(request)),
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -269,6 +230,73 @@ class AuthApi {
     return _decodeJsonObject(response);
   }
 
+  // UPDATE REPORT
+  // Backend: PUT /api/Reports/{id}
+  // Uses multipart form data because the backend accepts an optional image.
+  Future<Map<String, dynamic>> updateReport({
+    required int reportId,
+    required String accessToken,
+    required String issueCategory,
+    required String issueType,
+    required int areaId,
+    required String location,
+    required double latitude,
+    required double longitude,
+    String description = '',
+    String? imagePath,
+  }) async {
+    final request = http.MultipartRequest(
+      'PUT',
+      _endpoint('/api/Reports/$reportId'),
+    );
+
+    request.headers.addAll({
+      'Accept': 'application/json',
+      'Authorization': 'Bearer $accessToken',
+    });
+
+    request.fields.addAll({
+      'IssueCategory': issueCategory,
+      'IssueType': issueType,
+      'AreaId': areaId.toString(),
+      'Location': location,
+      'Latitude': latitude.toString(),
+      'Longitude': longitude.toString(),
+      'Description': description,
+    });
+
+    if (imagePath != null && imagePath.trim().isNotEmpty) {
+      request.files.add(await http.MultipartFile.fromPath('Image', imagePath));
+    }
+
+    final response = await _send(
+      () async => http.Response.fromStream(await _client.send(request)),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _exceptionFromResponse(response);
+    }
+
+    return _decodeJsonObject(response);
+  }
+
+  // DELETE REPORT
+  // Backend: DELETE /api/Reports/{id}
+  Future<void> deleteReport({
+    required int reportId,
+    required String accessToken,
+  }) async {
+    final response = await _send(
+      () => _client.delete(
+        _endpoint('/api/Reports/$reportId'),
+        headers: _headers(accessToken: accessToken),
+      ),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _exceptionFromResponse(response);
+    }
+  }
 
   // UPDATE NAME
   // Backend: PUT /api/Users/profile
@@ -276,13 +304,9 @@ class AuthApi {
     required String accessToken,
     required String fullName,
   }) {
-    return _putJson(
-      '/api/Users/profile',
-      {
-        'fullName': fullName.trim(),
-      },
-      accessToken: accessToken,
-    );
+    return _putJson('/api/Users/profile', {
+      'fullName': fullName.trim(),
+    }, accessToken: accessToken);
   }
 
   // CHANGE EMAIL (step 1)
@@ -295,7 +319,7 @@ class AuthApi {
     required String currentPassword,
   }) async {
     final response = await _send(
-          () => _client.post(
+      () => _client.post(
         _endpoint('/api/Users/change-email'),
         headers: _headers(accessToken: accessToken),
         body: jsonEncode({
@@ -305,8 +329,7 @@ class AuthApi {
       ),
     );
 
-    if (response.statusCode < 200 ||
-        response.statusCode >= 300) {
+    if (response.statusCode < 200 || response.statusCode >= 300) {
       throw _exceptionFromResponse(response);
     }
 
@@ -322,7 +345,7 @@ class AuthApi {
     required String newPassword,
   }) async {
     final response = await _send(
-          () => _client.put(
+      () => _client.put(
         _endpoint('/api/Auth/change-password'),
         headers: _headers(accessToken: accessToken),
         body: jsonEncode({
@@ -332,8 +355,7 @@ class AuthApi {
       ),
     );
 
-    if (response.statusCode < 200 ||
-        response.statusCode >= 300) {
+    if (response.statusCode < 200 || response.statusCode >= 300) {
       throw _exceptionFromResponse(response);
     }
 
@@ -342,21 +364,16 @@ class AuthApi {
 
   // FORGOT PASSWORD
   // Backend: POST /api/Auth/forgot-password
-  Future<String> forgotPassword({
-    required String email,
-  }) async {
+  Future<String> forgotPassword({required String email}) async {
     final response = await _send(
-          () => _client.post(
+      () => _client.post(
         _endpoint('/api/Auth/forgot-password'),
         headers: _headers(),
-        body: jsonEncode({
-          'email': email.trim().toLowerCase(),
-        }),
+        body: jsonEncode({'email': email.trim().toLowerCase()}),
       ),
     );
 
-    if (response.statusCode < 200 ||
-        response.statusCode >= 300) {
+    if (response.statusCode < 200 || response.statusCode >= 300) {
       throw _exceptionFromResponse(response);
     }
 
@@ -371,7 +388,7 @@ class AuthApi {
     required String newPassword,
   }) async {
     final response = await _send(
-          () => _client.post(
+      () => _client.post(
         _endpoint('/api/Auth/reset-password'),
         headers: _headers(),
         body: jsonEncode({
@@ -382,8 +399,7 @@ class AuthApi {
       ),
     );
 
-    if (response.statusCode < 200 ||
-        response.statusCode >= 300) {
+    if (response.statusCode < 200 || response.statusCode >= 300) {
       throw _exceptionFromResponse(response);
     }
 
@@ -392,13 +408,13 @@ class AuthApi {
 
   // Shared POST helper for endpoints returning JSON objects.
   Future<Map<String, dynamic>> _post(
-      String path,
-      Map<String, Object?> body, {
-        required Set<int> acceptedStatuses,
-        String? accessToken,
-      }) async {
+    String path,
+    Map<String, Object?> body, {
+    required Set<int> acceptedStatuses,
+    String? accessToken,
+  }) async {
     final response = await _send(
-          () => _client.post(
+      () => _client.post(
         _endpoint(path),
         headers: _headers(accessToken: accessToken),
         body: jsonEncode(body),
@@ -409,8 +425,7 @@ class AuthApi {
       throw _exceptionFromResponse(response);
     }
 
-    if (response.statusCode == 204 ||
-        response.body.trim().isEmpty) {
+    if (response.statusCode == 204 || response.body.trim().isEmpty) {
       return <String, dynamic>{};
     }
 
@@ -419,29 +434,26 @@ class AuthApi {
 
   // Shared PUT helper for endpoints returning JSON objects.
   Future<Map<String, dynamic>> _putJson(
-      String path,
-      Map<String, Object?> body, {
-        String? accessToken,
-      }) async {
+    String path,
+    Map<String, Object?> body, {
+    String? accessToken,
+  }) async {
     final response = await _send(
-          () => _client.put(
+      () => _client.put(
         _endpoint(path),
         headers: _headers(accessToken: accessToken),
         body: jsonEncode(body),
       ),
     );
 
-    if (response.statusCode < 200 ||
-        response.statusCode >= 300) {
+    if (response.statusCode < 200 || response.statusCode >= 300) {
       throw _exceptionFromResponse(response);
     }
 
     return _decodeJsonObject(response);
   }
 
-  Map<String, String> _headers({
-    String? accessToken,
-  }) {
+  Map<String, String> _headers({String? accessToken}) {
     return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -451,8 +463,7 @@ class AuthApi {
   }
 
   Uri _endpoint(String path) {
-    final normalisedPath =
-    path.startsWith('/') ? path : '/$path';
+    final normalisedPath = path.startsWith('/') ? path : '/$path';
 
     return Uri.parse('$_baseUrl$normalisedPath');
   }
@@ -469,7 +480,7 @@ class AuthApi {
         uri.hasFragment) {
       throw ArgumentError(
         'Invalid API base URL. Use a URL such as '
-            'http://localhost:5231 or https://your-api.example.com.',
+        'http://localhost:5231 or https://your-api.example.com.',
       );
     }
 
@@ -478,9 +489,7 @@ class AuthApi {
         : trimmed;
   }
 
-  Future<http.Response> _send(
-      Future<http.Response> Function() request,
-      ) async {
+  Future<http.Response> _send(Future<http.Response> Function() request) async {
     if (_closed) {
       throw const AuthApiException(
         'The authentication API client has already been closed.',
@@ -488,13 +497,11 @@ class AuthApi {
     }
 
     try {
-      return await request().timeout(
-        const Duration(seconds: 20),
-      );
+      return await request().timeout(const Duration(seconds: 20));
     } on SocketException {
       throw const AuthApiException(
         'Could not connect to the server. Check that the backend is '
-            'running and that the API URL is correct.',
+        'running and that the API URL is correct.',
       );
     } on http.ClientException {
       throw const AuthApiException(
@@ -507,9 +514,7 @@ class AuthApi {
     }
   }
 
-  Map<String, dynamic> _decodeJsonObject(
-      http.Response response,
-      ) {
+  Map<String, dynamic> _decodeJsonObject(http.Response response) {
     final body = response.body.trim();
 
     if (body.isEmpty) {
@@ -548,8 +553,7 @@ class AuthApi {
       final decoded = jsonDecode(body);
 
       if (decoded is Map) {
-        final message =
-            decoded['message'] ?? decoded['Message'];
+        final message = decoded['message'] ?? decoded['Message'];
 
         if (message != null) {
           return message.toString();
@@ -565,9 +569,7 @@ class AuthApi {
     }
   }
 
-  AuthApiException _exceptionFromResponse(
-      http.Response response,
-      ) {
+  AuthApiException _exceptionFromResponse(http.Response response) {
     String message = 'The request failed. Please try again.';
     String? code;
     final body = response.body.trim();
@@ -579,10 +581,8 @@ class AuthApi {
         if (decoded is Map) {
           code = decoded['code']?.toString();
 
-          final serverMessage =
-              decoded['message'] ?? decoded['Message'];
-          final validationMessages =
-          _validationMessages(decoded['errors']);
+          final serverMessage = decoded['message'] ?? decoded['Message'];
+          final validationMessages = _validationMessages(decoded['errors']);
 
           if (serverMessage != null) {
             message = serverMessage.toString();
@@ -650,5 +650,29 @@ class AuthApi {
     }
 
     return messages;
+  }
+
+  // get - Used for fetching lists, the supervisor reports
+  Future<List<dynamic>> getRaw(
+    String path, {
+    required String accessToken,
+  }) async {
+    final response = await _send(
+      () => _client.get(
+        _endpoint(path),
+        headers: _headers(accessToken: accessToken),
+      ),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _exceptionFromResponse(response);
+    }
+
+    final body = response.body.trim();
+    if (body.isEmpty) return [];
+
+    final decoded = jsonDecode(body);
+    if (decoded is List) return decoded;
+    return [];
   }
 }

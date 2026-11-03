@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'Help.dart';
 import 'StartUp.dart';
@@ -14,6 +15,12 @@ class EditProfilePage extends StatefulWidget {
 }
 
 class _EditProfilePageState extends State<EditProfilePage> {
+  static const Color _orange = Color(0xFFC94F1B);
+  static const Color _cream = Color(0xFFFFF8F4);
+  static const Color _darkText = Color(0xFF292524);
+  static const Color _secondaryText = Color(0xFF78716C);
+  static const Color _borderColor = Color(0xFFE8C7B8);
+
   static final _emailPattern = RegExp(
     r'^[^\s@]+@(gmail|yahoo|outlook|hotmail|live|microsoft)\.com$',
     caseSensitive: false,
@@ -25,12 +32,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final isSupervisor = user?.isStaff == true;
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: _cream,
       appBar: AppBar(
         backgroundColor: pagePrimaryColor(isSupervisor: isSupervisor),
+        foregroundColor: Colors.white,
+        elevation: 0,
         title: const Text(
           'Edit Profile',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.3,
+          ),
         ),
         leading: IconButton(
           tooltip: 'Back',
@@ -48,60 +62,213 @@ class _EditProfilePageState extends State<EditProfilePage> {
           ),
         ],
       ),
-      body: Container(
-        decoration: pageBackgroundDecoration(isSupervisor: isSupervisor),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+
+      // Full-screen background
+      body: SizedBox.expand(
+        child: Container(
+          decoration: isSupervisor
+              ? pageBackgroundDecoration(isSupervisor: isSupervisor)
+              : const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xFFFFF8F4), Color(0xFFFFE9DC)],
+                  ),
+                ),
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Profile icon
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(28),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _orange.withValues(alpha: 0.12),
+                            blurRadius: 25,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Container(
+                        width: 110,
+                        height: 110,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF1E8),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: const Icon(
+                          Icons.person,
+                          size: 65,
+                          color: _orange,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  const Text(
+                    'Edit your profile',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: _darkText,
+                      fontSize: 34,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  const Text(
+                    'Update your personal information and account security.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: _secondaryText,
+                      fontSize: 15,
+                      height: 1.5,
+                    ),
+                  ),
+
+                  const SizedBox(height: 38),
+
+                  // Name card
+                  _profileCard(
+                    icon: Icons.person_outline,
+                    label: 'Name',
+                    value: user?.fullName ?? 'Not set',
+                    onTap: _showNameDialog,
+                  ),
+
+                  // Email card
+                  _profileCard(
+                    icon: Icons.email_outlined,
+                    label: 'Email',
+                    value: user?.email ?? 'Not set',
+                    onTap: _showEmailDialog,
+                  ),
+
+                  // Password card
+                  _profileCard(
+                    icon: Icons.lock_outline,
+                    label: 'Password',
+                    value: 'Change your password',
+                    onTap: _showPasswordDialog,
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Done button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _orange,
+                        foregroundColor: Colors.white,
+                        elevation: 4,
+                        shadowColor: _orange.withValues(alpha: 0.25),
+                        padding: const EdgeInsets.symmetric(vertical: 17),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        'Done',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Profile information cards
+  Widget _profileCard({
+    required IconData icon,
+    required String label,
+    required String value,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _borderColor, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: _orange.withValues(alpha: 0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+            child: Row(
               children: [
-                const Center(
-                  child: CircleAvatar(
-                    radius: 48,
-                    backgroundColor: Color(0xFFC94F1B),
-                    child: Icon(Icons.person, size: 50, color: Colors.white),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF1E8),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, color: _orange, size: 26),
+                ),
+
+                const SizedBox(width: 16),
+
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: const TextStyle(
+                          color: _orange,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        value,
+                        style: const TextStyle(
+                          color: _darkText,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Edit your profile',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                _profileCard(
-                  icon: Icons.person_outline,
-                  label: 'Name',
-                  value: user?.fullName ?? 'Not set',
-                  onTap: _showNameDialog,
-                ),
-                _profileCard(
-                  icon: Icons.email_outlined,
-                  label: 'Email',
-                  value: user?.email ?? 'Not set',
-                  onTap: _showEmailDialog,
-                ),
-                _profileCard(
-                  icon: Icons.lock_outline,
-                  label: 'Password',
-                  value: 'Change your password',
-                  onTap: _showPasswordDialog,
-                ),
-                const SizedBox(height: 20),
-                OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white),
-                    minimumSize: const Size.fromHeight(52),
-                  ),
-                  child: const Text('Done'),
-                ),
+
+                const Icon(Icons.chevron_right, color: _orange),
               ],
             ),
           ),
@@ -110,56 +277,34 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  Widget _profileCard({
-    required IconData icon,
-    required String label,
-    required String value,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: Colors.white.withValues(alpha: 0.82),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
-        leading: Icon(icon, color: const Color(0xFFC94F1B)),
-        title: Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFFC94F1B),
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        subtitle: Text(
-          value,
-          style: const TextStyle(
-            color: Color(0xFF1F1F1F),
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: onTap,
-      ),
-    );
-  }
-
   void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _showInfoDialog(String title, String message) {
     return showDialog<void>(
       context: context,
       builder: (infoContext) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          title,
+          style: const TextStyle(color: _darkText, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          message,
+          style: const TextStyle(
+            color: _secondaryText,
+            fontSize: 15,
+            height: 1.5,
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(infoContext),
+            style: TextButton.styleFrom(foregroundColor: _orange),
             child: const Text('OK'),
           ),
         ],
@@ -172,13 +317,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => const StartupPage()),
-          (_) => false,
+      (_) => false,
     );
   }
 
-  // Shows a dialog with the given fields. onSave runs when Save is pressed
-  // and the form is valid. If it throws an AuthApiException, the message is
-  // shown in the dialog. Returns true when the save worked.
+  // Shows a dialog with the given fields.
+  // onSave runs when Save is pressed and the form is valid.
   Future<bool> _showActionDialog({
     required String title,
     required GlobalKey<FormState> formKey,
@@ -193,7 +337,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
       barrierDismissible: false,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text(title),
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            title,
+            style: const TextStyle(
+              color: _darkText,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           content: SingleChildScrollView(
             child: Form(
               key: formKey,
@@ -215,55 +370,67 @@ class _EditProfilePageState extends State<EditProfilePage> {
           ),
           actions: [
             TextButton(
-              onPressed:
-              saving ? null : () => Navigator.pop(dialogContext, false),
+              onPressed: saving
+                  ? null
+                  : () => Navigator.pop(dialogContext, false),
+              style: TextButton.styleFrom(foregroundColor: _orange),
               child: const Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: saving
                   ? null
                   : () async {
-                if (!formKey.currentState!.validate()) return;
+                      if (!formKey.currentState!.validate()) return;
 
-                setDialogState(() {
-                  saving = true;
-                  error = null;
-                });
+                      setDialogState(() {
+                        saving = true;
+                        error = null;
+                      });
 
-                try {
-                  await onSave();
+                      try {
+                        await onSave();
 
-                  if (dialogContext.mounted) {
-                    Navigator.pop(dialogContext, true);
-                  }
-                } on AuthApiException catch (e) {
-                  if (!dialogContext.mounted) return;
+                        if (dialogContext.mounted) {
+                          Navigator.pop(dialogContext, true);
+                        }
+                      } on AuthApiException catch (e) {
+                        if (!dialogContext.mounted) return;
 
-                  if (e.isSessionExpired) {
-                    Navigator.pop(dialogContext, false);
-                    _goToStart();
-                    return;
-                  }
+                        if (e.isSessionExpired) {
+                          Navigator.pop(dialogContext, false);
+                          _goToStart();
+                          return;
+                        }
 
-                  setDialogState(() {
-                    saving = false;
-                    error = e.message;
-                  });
-                } catch (_) {
-                  if (!dialogContext.mounted) return;
+                        setDialogState(() {
+                          saving = false;
+                          error = e.message;
+                        });
+                      } catch (_) {
+                        if (!dialogContext.mounted) return;
 
-                  setDialogState(() {
-                    saving = false;
-                    error = 'Something went wrong. Please try again.';
-                  });
-                }
-              },
+                        setDialogState(() {
+                          saving = false;
+                          error = 'Something went wrong. Please try again.';
+                        });
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _orange,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
               child: saving
                   ? const SizedBox(
-                height: 18,
-                width: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
                   : const Text('Save'),
             ),
           ],
@@ -287,7 +454,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
           controller: controller,
           maxLength: 100,
           textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(labelText: 'Full name'),
+          inputFormatters: [FilteringTextInputFormatter.deny(RegExp(r'[0-9]'))],
+          decoration: _fieldDecoration('Full name'),
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
               return 'Please enter your name';
@@ -319,21 +487,28 @@ class _EditProfilePageState extends State<EditProfilePage> {
         TextFormField(
           controller: emailController,
           keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(labelText: 'New email'),
+          decoration: _fieldDecoration('New email'),
           validator: (value) {
             final email = value?.trim().toLowerCase() ?? '';
-            if (email.isEmpty) return 'Please enter the new email';
+
+            if (email.isEmpty) {
+              return 'Please enter the new email';
+            }
+
             if (!_emailPattern.hasMatch(email)) {
               return 'Use a Gmail, Yahoo, Outlook, or Microsoft email';
             }
+
             return null;
           },
         ),
+
         const SizedBox(height: 12),
+
         TextFormField(
           controller: passwordController,
           obscureText: true,
-          decoration: const InputDecoration(labelText: 'Current password'),
+          decoration: _fieldDecoration('Current password'),
           validator: (value) => (value == null || value.isEmpty)
               ? 'Please enter your current password'
               : null,
@@ -368,30 +543,36 @@ class _EditProfilePageState extends State<EditProfilePage> {
         TextFormField(
           controller: currentController,
           obscureText: true,
-          decoration: const InputDecoration(labelText: 'Current password'),
+          decoration: _fieldDecoration('Current password'),
           validator: (value) => (value == null || value.isEmpty)
               ? 'Please enter your current password'
               : null,
         ),
+
         const SizedBox(height: 12),
+
         TextFormField(
           controller: newController,
           obscureText: true,
-          decoration: const InputDecoration(labelText: 'New password'),
+          decoration: _fieldDecoration('New password'),
           validator: _validateNewPassword,
         ),
+
         const SizedBox(height: 12),
+
         TextFormField(
           controller: confirmController,
           obscureText: true,
-          decoration: const InputDecoration(labelText: 'Confirm new password'),
+          decoration: _fieldDecoration('Confirm new password'),
           validator: (value) {
             if (value == null || value.isEmpty) {
               return 'Please confirm your new password';
             }
+
             if (value != newController.text) {
               return 'Your passwords do not match';
             }
+
             return null;
           },
         ),
@@ -415,10 +596,36 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _goToStart();
   }
 
+  // Styling for the form fields in the dialogs.
+  InputDecoration _fieldDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(color: _secondaryText),
+      floatingLabelStyle: const TextStyle(color: _orange),
+      filled: true,
+      fillColor: _cream,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _borderColor),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _borderColor),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: _orange, width: 1.5),
+      ),
+    );
+  }
+
   String? _validateNewPassword(String? value) {
     final password = value ?? '';
 
-    if (password.isEmpty) return 'Please enter a new password';
+    if (password.isEmpty) {
+      return 'Please enter a new password';
+    }
 
     if (password.length < 8) {
       return 'Password must be 8 characters or more';

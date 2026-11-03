@@ -17,11 +17,11 @@ class SupervisorDashboardPage extends StatefulWidget {
       _SupervisorDashboardPageState();
 }
 class _SupervisorDashboardPageState extends State<SupervisorDashboardPage> {
-  static const Color _orange = Color(0xFFC94F1B);
+  static const Color _orange = supervisorPrimaryColor;
   static const Color _darkText = Color(0xFF292524);
   static const Color _secondaryText = Color(0xFF78716C);
-  static const Color _cream = Color(0xFFFFF8F4);
-  static const Color _borderColor = Color(0xFFE8C7B8);
+  static const Color _cream = Color(0xFFF5F5F5);
+  static const Color _borderColor = Color(0xFFE7E5E4);
   int _selectedIndex = 0;
   static const _pages = [
     _SupervisorOverview(),
@@ -122,7 +122,7 @@ class _SupervisorDashboardPageState extends State<SupervisorDashboardPage> {
     return ListTile(
       selected: _selectedIndex == index,
       selectedColor: _orange,
-      selectedTileColor: const Color(0xFFFFE9DC),
+      selectedTileColor: const Color(0xFFF1E6E1),
       leading: Icon(
         icon,
         color: _selectedIndex == index ? _orange : _secondaryText,
@@ -163,11 +163,11 @@ class _SupervisorOverview extends StatefulWidget {
   State<_SupervisorOverview> createState() => _SupervisorOverviewState();
 }
 class _SupervisorOverviewState extends State<_SupervisorOverview> {
-  static const Color _orange = Color(0xFFC94F1B);
+  static const Color _orange = supervisorPrimaryColor;
   static const Color _darkText = Color(0xFF292524);
   static const Color _secondaryText = Color(0xFF78716C);
-  static const Color _borderColor = Color(0xFFE8C7B8);
-  static const Color _cream = Color(0xFFFFF8F4);
+  static const Color _borderColor = Color(0xFFE7E5E4);
+  static const Color _cream = Color(0xFFF5F5F5);
   DateTime _now = DateTime.now();
   Timer? _clockTimer;
   // Reports fetched from the backend for the logged-in supervisor.
@@ -455,10 +455,10 @@ class _ScheduleCard extends StatelessWidget {
     required this.jobCount,
     required this.onTap,
   });
-  static const Color _orange = Color(0xFFC94F1B);
+  static const Color _orange = supervisorPrimaryColor;
   static const Color _darkText = Color(0xFF292524);
   static const Color _secondaryText = Color(0xFF78716C);
-  static const Color _borderColor = Color(0xFFE8C7B8);
+  static const Color _borderColor = Color(0xFFE7E5E4);
   final DateTime now;
   final int jobCount;
   final VoidCallback onTap;
@@ -540,10 +540,10 @@ class _DailyReportsBubble extends StatelessWidget {
     required this.count,
     required this.onTap,
   });
-  static const Color _orange = Color(0xFFC94F1B);
+  static const Color _orange = supervisorPrimaryColor;
   static const Color _darkText = Color(0xFF292524);
   static const Color _secondaryText = Color(0xFF78716C);
-  static const Color _borderColor = Color(0xFFE8C7B8);
+  static const Color _borderColor = Color(0xFFE7E5E4);
   final String? reportType;
   final int count;
   final VoidCallback onTap;
@@ -627,10 +627,10 @@ class _StatCard extends StatelessWidget {
     required this.value,
     required this.icon,
   });
-  static const Color _orange = Color(0xFFC94F1B);
+  static const Color _orange = supervisorPrimaryColor;
   static const Color _darkText = Color(0xFF292524);
   static const Color _secondaryText = Color(0xFF78716C);
-  static const Color _borderColor = Color(0xFFE8C7B8);
+  static const Color _borderColor = Color(0xFFE7E5E4);
   final String label;
   final int value;
   final IconData icon;
