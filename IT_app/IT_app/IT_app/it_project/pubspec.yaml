@@ -19,6 +19,8 @@ dependencies:
   maplibre_gl: ^0.27.1
   http: ^1.6.0
   geolocator: ^14.1.1
+  file_saver: ^0.2.14
+  pdf: ^3.11.1
 
 dev_dependencies:
   flutter_test:
