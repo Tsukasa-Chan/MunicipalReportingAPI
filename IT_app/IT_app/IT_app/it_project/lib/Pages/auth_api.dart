@@ -28,9 +28,9 @@ class AuthApiException implements Exception {
 
 class AuthApi {
   AuthApi({http.Client? client, String? baseUrl})
-    : _client = client ?? http.Client(),
-      _ownsClient = client == null,
-      _baseUrl = _normaliseBaseUrl(baseUrl ?? _configuredBaseUrl());
+      : _client = client ?? http.Client(),
+        _ownsClient = client == null,
+        _baseUrl = _normaliseBaseUrl(baseUrl ?? _configuredBaseUrl());
 
   // Override with --dart-define=API_BASE_URL=https://... for a real phone
   // or for the hosted API.
@@ -116,7 +116,7 @@ class AuthApi {
   // Backend: POST /api/Auth/resend-confirmation
   Future<String> resendEmailConfirmation({required String email}) async {
     final response = await _send(
-      () => _client.post(
+          () => _client.post(
         _endpoint('/api/Auth/resend-confirmation'),
         headers: _headers(),
         body: jsonEncode({'email': email.trim().toLowerCase()}),
@@ -167,7 +167,7 @@ class AuthApi {
     required String accessToken,
   }) async {
     final response = await _send(
-      () => _client.get(
+          () => _client.get(
         _endpoint('/api/Auth/me'),
         headers: _headers(accessToken: accessToken),
       ),
@@ -220,7 +220,7 @@ class AuthApi {
 
     // CHANGE: Reuse the existing HTTP client, timeout and error handling.
     final response = await _send(
-      () async => http.Response.fromStream(await _client.send(request)),
+          () async => http.Response.fromStream(await _client.send(request)),
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -270,7 +270,7 @@ class AuthApi {
     }
 
     final response = await _send(
-      () async => http.Response.fromStream(await _client.send(request)),
+          () async => http.Response.fromStream(await _client.send(request)),
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -287,7 +287,7 @@ class AuthApi {
     required String accessToken,
   }) async {
     final response = await _send(
-      () => _client.delete(
+          () => _client.delete(
         _endpoint('/api/Reports/$reportId'),
         headers: _headers(accessToken: accessToken),
       ),
@@ -296,6 +296,23 @@ class AuthApi {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw _exceptionFromResponse(response);
     }
+  }
+
+  // Update the shared Issue status (not the resident's Report status).
+  // The backend authorizes supervisors only for their assigned issues.
+  Future<Map<String, dynamic>> updateIssueStatus({
+    required String accessToken,
+    required int issueId,
+    required String status,
+  }) {
+    if (!const {'Reported', 'InProgress', 'Resolved'}.contains(status)) {
+      throw ArgumentError.value(status, 'status', 'Unsupported issue status.');
+    }
+    return _putJson(
+      ApiPaths.issueStatus(issueId),
+      {'status': status},
+      accessToken: accessToken,
+    );
   }
 
   // UPDATE NAME
@@ -319,7 +336,7 @@ class AuthApi {
     required String currentPassword,
   }) async {
     final response = await _send(
-      () => _client.post(
+          () => _client.post(
         _endpoint('/api/Users/change-email'),
         headers: _headers(accessToken: accessToken),
         body: jsonEncode({
@@ -345,7 +362,7 @@ class AuthApi {
     required String newPassword,
   }) async {
     final response = await _send(
-      () => _client.put(
+          () => _client.put(
         _endpoint('/api/Auth/change-password'),
         headers: _headers(accessToken: accessToken),
         body: jsonEncode({
@@ -366,7 +383,7 @@ class AuthApi {
   // Backend: POST /api/Auth/forgot-password
   Future<String> forgotPassword({required String email}) async {
     final response = await _send(
-      () => _client.post(
+          () => _client.post(
         _endpoint('/api/Auth/forgot-password'),
         headers: _headers(),
         body: jsonEncode({'email': email.trim().toLowerCase()}),
@@ -388,7 +405,7 @@ class AuthApi {
     required String newPassword,
   }) async {
     final response = await _send(
-      () => _client.post(
+          () => _client.post(
         _endpoint('/api/Auth/reset-password'),
         headers: _headers(),
         body: jsonEncode({
@@ -408,13 +425,13 @@ class AuthApi {
 
   // Shared POST helper for endpoints returning JSON objects.
   Future<Map<String, dynamic>> _post(
-    String path,
-    Map<String, Object?> body, {
-    required Set<int> acceptedStatuses,
-    String? accessToken,
-  }) async {
+      String path,
+      Map<String, Object?> body, {
+        required Set<int> acceptedStatuses,
+        String? accessToken,
+      }) async {
     final response = await _send(
-      () => _client.post(
+          () => _client.post(
         _endpoint(path),
         headers: _headers(accessToken: accessToken),
         body: jsonEncode(body),
@@ -434,12 +451,12 @@ class AuthApi {
 
   // Shared PUT helper for endpoints returning JSON objects.
   Future<Map<String, dynamic>> _putJson(
-    String path,
-    Map<String, Object?> body, {
-    String? accessToken,
-  }) async {
+      String path,
+      Map<String, Object?> body, {
+        String? accessToken,
+      }) async {
     final response = await _send(
-      () => _client.put(
+          () => _client.put(
         _endpoint(path),
         headers: _headers(accessToken: accessToken),
         body: jsonEncode(body),
@@ -480,7 +497,7 @@ class AuthApi {
         uri.hasFragment) {
       throw ArgumentError(
         'Invalid API base URL. Use a URL such as '
-        'http://localhost:5231 or https://your-api.example.com.',
+            'http://localhost:5231 or https://your-api.example.com.',
       );
     }
 
@@ -501,7 +518,7 @@ class AuthApi {
     } on SocketException {
       throw const AuthApiException(
         'Could not connect to the server. Check that the backend is '
-        'running and that the API URL is correct.',
+            'running and that the API URL is correct.',
       );
     } on http.ClientException {
       throw const AuthApiException(
@@ -654,11 +671,11 @@ class AuthApi {
 
   // get - Used for fetching lists, the supervisor reports
   Future<List<dynamic>> getRaw(
-    String path, {
-    required String accessToken,
-  }) async {
+      String path, {
+        required String accessToken,
+      }) async {
     final response = await _send(
-      () => _client.get(
+          () => _client.get(
         _endpoint(path),
         headers: _headers(accessToken: accessToken),
       ),

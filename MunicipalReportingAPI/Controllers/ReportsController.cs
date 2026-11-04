@@ -144,6 +144,7 @@ namespace MunicipalReportingAPI.Controllers
             var response = reports.Select(r => new
             {
                 id = r.Id,
+                issueId = r.IssueId,
                 senderName = r.User != null ? r.User.FullName : "Unknown Sender", 
                 senderUsername = r.User != null ? r.User.UserName : "No username",
                 issueType = r.IssueType.ToString(),
