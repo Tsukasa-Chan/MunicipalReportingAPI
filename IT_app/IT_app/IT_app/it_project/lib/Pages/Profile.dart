@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:public_file_saver/public_file_saver.dart';
+import 'dart:typed_data';
 
 import 'ContactUs.dart';
 import 'EditProfile.dart';
@@ -123,6 +127,75 @@ class _ProfilePageState extends State<ProfilePage> {
       _message('Could not delete the report. Please check your connection.');
     } finally {
       if (mounted) setState(() => _deleting = false);
+    }
+  }
+
+  Future<void> _downloadReportPdf(ReportRequest report) async {
+    try {
+      final pdf = pw.Document();
+
+      pdf.addPage(
+        pw.MultiPage(
+            pageFormat: PdfPageFormat.a4,
+            build: (context) => [
+            pw.Padding(
+            padding: const pw.EdgeInsets.all(30),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  'Municipal Reporting App',
+                  style: pw.TextStyle(
+                    fontSize: 22,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.SizedBox(height: 10),
+                pw.Text(
+                  'Report #${report.backendId ?? report.id}',
+                  style: pw.TextStyle(
+                    fontSize: 18,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.Divider(),
+                pw.SizedBox(height: 10),
+                pw.Text('Status: ${report.status}'),
+                pw.SizedBox(height: 10),
+                pw.Text('Date Submitted: ${report.createdAt.toLocal()}'),
+                pw.SizedBox(height: 10),
+                pw.Text('Category: ${report.issueType}'),
+                pw.SizedBox(height: 10),
+                pw.Text('Specific Issue: ${report.issue}'),
+                pw.SizedBox(height: 10),
+                pw.Text('Location: ${report.locationAddress}'),
+                pw.SizedBox(height: 10),
+                pw.Text(
+                  'Additional Information: '
+                      '${report.description.isEmpty ? 'None' : report.description}',
+                ),
+              ],
+            ),
+            ),
+          ],
+        ),
+      );
+
+      final pdfBytes = await pdf.save();
+
+      final result = await PublicFileSaver().save(
+        bytes: pdfBytes,
+        fileName: 'Municipal_Report_${report.backendId ?? report.id}.pdf',
+        mimeType: 'application/pdf',
+      );
+
+      if (result?.isSuccess == true) {
+        _message('Report PDF saved to Downloads successfully.');
+      } else {
+        _message('Could not save the PDF.');
+      }
+    } catch (error) {
+      _message('Error generating PDF: $error');
     }
   }
 
@@ -457,6 +530,23 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _deleting ? null : () => _downloadReportPdf(report),
+                  icon: const Icon(Icons.download, size: 18),
+                  label: const Text('Download PDF'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _orange,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
               ),
               if (report.backendId == null)
                 const Padding(

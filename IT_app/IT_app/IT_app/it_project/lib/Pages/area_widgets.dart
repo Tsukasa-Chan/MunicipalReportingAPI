@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'api_config.dart';
 import 'issues_api.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:public_file_saver/public_file_saver.dart';
 
 class AreaFeedController extends ChangeNotifier {
 
@@ -772,6 +775,113 @@ class AreaDashboardCard extends StatelessWidget {
   // Reports saved on this device that have not reached the server yet.
   final int unsentReports;
 
+  Future<void> _downloadDashboardPdf(
+      BuildContext context,
+      AreaStats stats,
+      ) async {
+    try {
+      final pdf = pw.Document();
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          build: (context) => [
+            pw.Padding(
+              padding: const pw.EdgeInsets.all(30),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    'Municipal Reporting App',
+                    style: pw.TextStyle(
+                      fontSize: 22,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.SizedBox(height: 10),
+                  pw.Text(
+                    'Dashboard Statistics',
+                    style: pw.TextStyle(
+                      fontSize: 18,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.SizedBox(height: 10),
+                  pw.Text('Area: $areaName'),
+                  pw.Text('Date Generated: ${DateTime.now()}'),
+                  pw.Divider(),
+                  pw.SizedBox(height: 10),
+
+                  pw.Text(
+                    'Overall Statistics',
+                    style: pw.TextStyle(
+                      fontSize: 16,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.SizedBox(height: 10),
+                  pw.Text('Total Issues: ${stats.totalIssues}'),
+                  pw.Text('Total Reports: ${stats.totalReports}'),
+                  pw.Text('Reported: ${stats.reported}'),
+                  pw.Text('In Progress: ${stats.inProgress}'),
+                  pw.Text('Resolved: ${stats.resolved}'),
+
+                  pw.SizedBox(height: 20),
+                  pw.Text(
+                    'Statistics by Category',
+                    style: pw.TextStyle(
+                      fontSize: 16,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.SizedBox(height: 10),
+
+                  ...IssueCategories.all.map((category) {
+                    final categoryStats = stats.forCategory(category);
+
+                    return pw.Padding(
+                      padding: const pw.EdgeInsets.only(bottom: 10),
+                      child: pw.Text(
+                        '${IssueCategories.label(category)}: '
+                            '${categoryStats.total} issues',
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+
+      final pdfBytes = await pdf.save();
+
+      final result = await PublicFileSaver().save(
+        bytes: pdfBytes,
+        fileName: 'Dashboard_Statistics.pdf',
+        mimeType: 'application/pdf',
+      );
+
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result?.isSuccess == true
+                ? 'Dashboard PDF saved successfully.'
+                : 'Could not save the dashboard PDF.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error generating PDF: $error')),
+      );
+    }
+  }
+
   // Builds what appears on screen.
   @override
   Widget build(BuildContext context) {
@@ -1024,6 +1134,13 @@ class AreaDashboardCard extends StatelessWidget {
         icon: const Icon(Icons.map_outlined),
         // Button text.
         label: const Text('Browse all issues in my area'),
+      ),
+      const SizedBox(height: 12),
+
+      OutlinedButton.icon(
+        onPressed: () => _downloadDashboardPdf(context, stats),
+        icon: const Icon(Icons.download),
+        label: const Text('Download Dashboard PDF'),
       ),
     ];
   }
