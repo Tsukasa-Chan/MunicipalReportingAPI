@@ -1,3 +1,4 @@
+
 name: it_project
 description: "A new Flutter project."
 publish_to: 'none'
@@ -21,6 +22,7 @@ dependencies:
   geolocator: ^14.1.1
   pdf: ^3.13.1
   public_file_saver: ^1.2.2
+  file_saver: ^0.2.14
 
 dev_dependencies:
   flutter_test:
