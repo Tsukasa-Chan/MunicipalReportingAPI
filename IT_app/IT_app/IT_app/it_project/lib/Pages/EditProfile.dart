@@ -454,7 +454,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           controller: controller,
           maxLength: 100,
           textCapitalization: TextCapitalization.words,
-          inputFormatters: [FilteringTextInputFormatter.deny(RegExp(r'[0-9]'))],
+          inputFormatters: [FilteringTextInputFormatter.deny(RegExp(r'[^a-zA-Z\s]'))],
           decoration: _fieldDecoration('Full name'),
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
