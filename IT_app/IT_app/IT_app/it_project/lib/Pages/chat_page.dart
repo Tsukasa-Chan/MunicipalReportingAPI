@@ -281,9 +281,10 @@ class _ChatPageState extends State<ChatPage> {
   // displays suggested questions.
   Widget _suggestions() {
     const questions = [
-      'How do I report an issue?',
-      "What's happening in my area?",
-      'Help me report a problem',
+      'How do I submit a report?',
+      'How many potholes are in my area?',
+      'How do I download my reports?',
+      'How do I change my email?',
     ];
 
     return Padding(

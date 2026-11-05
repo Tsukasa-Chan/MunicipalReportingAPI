@@ -106,6 +106,9 @@ builder.Services.Configure<MunicipalReportingAPI.Options.IssueGroupingOptions>(
     builder.Configuration.GetSection(MunicipalReportingAPI.Options.IssueGroupingOptions.SectionName));
 builder.Services.AddScoped<IIssueService, IssueService>();
 
+// Restricted Fix My City help chatbot
+builder.Services.AddScoped<ChatService>();
+
 // CORS
 builder.Services.AddCors(options =>
 {
