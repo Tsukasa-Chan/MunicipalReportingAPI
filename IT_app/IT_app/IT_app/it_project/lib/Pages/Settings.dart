@@ -6,6 +6,7 @@ import 'OtherReports.dart';
 import 'Profile.dart';
 import 'Reporting.dart';
 import 'auth_store.dart';
+import 'auth_api.dart';
 import 'legal_documents.dart';
 import 'Supervisor_theme.dart';
 
@@ -665,119 +666,23 @@ class _SettingsPageState extends State<SettingsPage>
     );
   }
 
-  // Bug report dialog
-  void _showBugReportDialog(BuildContext context) {
-    final formKey = GlobalKey<FormState>();
-    final nameController = TextEditingController();
-    final emailController = TextEditingController();
-    final issueController = TextEditingController();
-
-    showDialog<void>(
+  // Bug report email recipient is already configured in the backend.
+  Future<void> _showBugReportDialog(BuildContext context) async {
+    final user = AuthStore.currentUser;
+    final submitted = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(
-            color: _borderColor,
-          ),
-        ),
-        title: const Text(
-          'Report a Bug in App',
-          style: TextStyle(
-            color: _darkText,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: Form(
-          key: formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: nameController,
-                  style: const TextStyle(
-                    color: _darkText,
-                  ),
-                  decoration: _inputDecoration('Name'),
-                  validator: (value) =>
-                  value == null || value.trim().isEmpty
-                      ? 'Please enter your name'
-                      : null,
-                ),
-
-                const SizedBox(height: 12),
-
-                TextFormField(
-                  controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  style: const TextStyle(
-                    color: _darkText,
-                  ),
-                  decoration: _inputDecoration('Email'),
-                  validator: (value) =>
-                  value == null || !value.contains('@')
-                      ? 'Please enter a valid email'
-                      : null,
-                ),
-
-                const SizedBox(height: 12),
-
-                TextFormField(
-                  controller: issueController,
-                  maxLines: 3,
-                  style: const TextStyle(
-                    color: _darkText,
-                  ),
-                  decoration: _inputDecoration(
-                    'Type of issue',
-                    alignLabelWithHint: true,
-                  ),
-                  validator: (value) =>
-                  value == null || value.trim().isEmpty
-                      ? 'Please describe the issue'
-                      : null,
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            style: TextButton.styleFrom(
-              foregroundColor: _secondaryText,
-            ),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _orange,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () {
-              if (!formKey.currentState!.validate()) return;
-
-              Navigator.pop(dialogContext);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Bug report submitted.'),
-                ),
-              );
-            },
-            child: const Text('Submit'),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (_) => _BugReportDialog(
+        name: user?.fullName.trim() ?? '',
+        email: user?.email.trim() ?? '',
+        inputDecoration: _inputDecoration,
       ),
-    ).whenComplete(() {
-      nameController.dispose();
-      emailController.dispose();
-      issueController.dispose();
-    });
+    );
+
+    if (!mounted || submitted != true) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Bug report submitted successfully.')),
+    );
   }
 
   // Form field styling
@@ -818,6 +723,186 @@ class _SettingsPageState extends State<SettingsPage>
           color: _orange,
           width: 1.5,
         ),
+      ),
+    );
+  }
+}
+
+// Owns the bug description controller for the entire dialog lifecycle.
+// Flutter calls dispose only after the dialog widget has been removed.
+class _BugReportDialog extends StatefulWidget {
+  const _BugReportDialog({
+    required this.name,
+    required this.email,
+    required this.inputDecoration,
+  });
+
+  final String name;
+  final String email;
+  final InputDecoration Function(String, {bool alignLabelWithHint})
+  inputDecoration;
+
+  @override
+  State<_BugReportDialog> createState() => _BugReportDialogState();
+}
+
+class _BugReportDialogState extends State<_BugReportDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _issueController = TextEditingController();
+  bool _isSubmitting = false;
+  String? _submitError;
+
+  @override
+  void dispose() {
+    _issueController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_isSubmitting || !_formKey.currentState!.validate()) return;
+
+    if (widget.name.isEmpty || widget.email.isEmpty) {
+      setState(() {
+        _submitError = 'Your account details could not be loaded. '
+            'Please log in again.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+      _submitError = null;
+    });
+
+    try {
+      await AuthStore.withAccessToken(
+            (api, token) => api.submitBugReport(
+          accessToken: token,
+          name: widget.name,
+          email: widget.email,
+          description: _issueController.text.trim(),
+        ),
+      );
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } on AuthApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isSubmitting = false;
+        _submitError = error.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isSubmitting = false;
+        _submitError = 'Could not send bug report. Please try again.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: !_isSubmitting,
+      child: AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: _SettingsPageState._borderColor),
+        ),
+        title: const Text(
+          'Report a Bug in App',
+          style: TextStyle(
+            color: _SettingsPageState._darkText,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Tell us what went wrong. Your account details will be '
+                      'included automatically so support can identify your report.',
+                  style: TextStyle(
+                    color: _SettingsPageState._secondaryText,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  initialValue: widget.name,
+                  readOnly: true,
+                  decoration: widget.inputDecoration('Name'),
+                  style: const TextStyle(color: _SettingsPageState._darkText),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  initialValue: widget.email,
+                  readOnly: true,
+                  decoration: widget.inputDecoration('Your account email'),
+                  style: const TextStyle(color: _SettingsPageState._darkText),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _issueController,
+                  enabled: !_isSubmitting,
+                  maxLength: 2000,
+                  minLines: 3,
+                  maxLines: 5,
+                  style: const TextStyle(color: _SettingsPageState._darkText),
+                  decoration: widget.inputDecoration(
+                    'Describe the bug',
+                    alignLabelWithHint: true,
+                  ),
+                  validator: (value) =>
+                  value == null || value.trim().isEmpty
+                      ? 'Please describe the issue'
+                      : null,
+                ),
+                if (_submitError != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    _submitError!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: _isSubmitting ? null : () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              foregroundColor: _SettingsPageState._secondaryText,
+            ),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: _isSubmitting ? null : _submit,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _SettingsPageState._orange,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: _isSubmitting
+                ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+                : const Text('Submit'),
+          ),
+        ],
       ),
     );
   }
