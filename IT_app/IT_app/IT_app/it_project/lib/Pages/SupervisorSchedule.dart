@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'api_paths.dart';
-import 'Suprevisor_view_reports.dart';
+import 'auth_api.dart';
 import 'Supervisor_theme.dart';
 import 'auth_store.dart';
 import 'report_store.dart';
@@ -100,29 +100,38 @@ class _SupervisorSchedulePageState
       });
     }
   }
-  // Groups related reports and sorts the groups by their newest assignment.
+  // One job is one backend Issue, even when several residents reported it.
+  // Legacy reports without issueId retain their existing grouping behaviour.
   List<ReportGroup> _getGroups() {
-    // Creates a modifiable list before sorting.
-    final groups = ReportStore.groupReports(_reports).toList();
+    final byIssueId = <int, List<ReportRequest>>{};
+    final legacyReports = <ReportRequest>[];
+    for (final report in _reports) {
+      final issueId = report.issueId;
+      if (issueId != null && issueId > 0) {
+        byIssueId.putIfAbsent(issueId, () => []).add(report);
+      } else {
+        legacyReports.add(report);
+      }
+    }
+    final groups = <ReportGroup>[
+      ...byIssueId.values.map(ReportGroup.fromReports),
+      ...ReportStore.groupReports(legacyReports),
+    ];
     groups.sort((first, second) {
       DateTime latestAssignment(ReportGroup group) {
-        DateTime latest =
-            group.firstReport.scheduledAt ??
-                group.firstReport.createdAt;
+        DateTime latest = group.firstReport.scheduledAt ??
+            group.firstReport.createdAt;
         for (final report in group.reports) {
           final date = report.scheduledAt ?? report.createdAt;
-          if (date.isAfter(latest)) {
-            latest = date;
-          }
+          if (date.isAfter(latest)) latest = date;
         }
         return latest;
       }
-      return latestAssignment(second).compareTo(
-        latestAssignment(first),
-      );
+      return latestAssignment(second).compareTo(latestAssignment(first));
     });
     return groups;
   }
+
   String _formatDate(DateTime date) {
     return '${date.day.toString().padLeft(2, '0')}/'
         '${date.month.toString().padLeft(2, '0')}/'
@@ -482,34 +491,68 @@ class _SupervisorScheduledJobPageState
     super.initState();
     _group = widget.group;
   }
-  // Updates the status of all reports in the selected group.
-  void _advanceStatus() {
-    final currentStatus = _group.firstReport.status;
-    String? nextStatus;
-    if (currentStatus == 'Assigned') {
-      nextStatus = 'In progress';
-    } else if (currentStatus == 'In progress') {
-      nextStatus = 'On-site';
+  bool _isUpdatingStatus = false;
+  String? _selectedStatus;
+
+  // Save the shared municipal Issue status first; only update the visible
+  // resident reports after the server confirms that the change succeeded.
+  Future<void> _changeIssueStatus() async {
+    if (_isUpdatingStatus || _selectedStatus == null) return;
+    final nextStatus = _selectedStatus!;
+    final current = _group.firstReport.status.trim();
+    final normalizedCurrent = current == 'In progress' ? 'InProgress' : current;
+    if (nextStatus == normalizedCurrent ||
+        !const {'Reported', 'InProgress', 'Resolved'}.contains(nextStatus)) {
+      return;
     }
-    if (nextStatus == null) return;
-    for (final report in _group.reports) {
-      ReportStore.updateStatus(report, nextStatus);
+
+    final issueIds = _group.reports.map((report) => report.issueId).toSet();
+    if (issueIds.length != 1 || issueIds.single == null ||
+        issueIds.single! <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(
+            'This job has no valid Issue ID. Ensure the backend returns issueId.'
+        )),
+      );
+      return;
     }
-    setState(() {});
+
+    setState(() => _isUpdatingStatus = true);
+    try {
+      await AuthStore.withAccessToken(
+            (api, token) => api.updateIssueStatus(
+          accessToken: token,
+          issueId: issueIds.single!,
+          status: nextStatus,
+        ),
+      );
+      if (!mounted) return;
+      setState(() {
+        for (final report in _group.reports) {
+          report.status = nextStatus;
+        }
+        _selectedStatus = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(
+            'Issue status updated to ${nextStatus == 'InProgress' ? 'In progress' : nextStatus}.'
+        )),
+      );
+    } on AuthApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not update the issue status. Please try again.')),
+      );
+    } finally {
+      if (mounted) setState(() => _isUpdatingStatus = false);
+    }
   }
-  // Opens the job completion and invoice page.
-  void _openInvoice() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) {
-          return JobCompletionPage(
-            report: _group.firstReport,
-          );
-        },
-      ),
-    );
-  }
+
   @override
   Widget build(BuildContext context) {
     final report = _group.firstReport;
@@ -595,65 +638,57 @@ class _SupervisorScheduledJobPageState
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       children: [
-                        _progressStep(
-                          'Assigned',
-                          report.status == 'Assigned' ||
-                              report.status == 'In progress' ||
-                              report.status == 'On-site',
-                        ),
-                        _progressStep(
-                          'In progress',
-                          report.status == 'In progress' ||
-                              report.status == 'On-site',
-                        ),
-                        _progressStep(
-                          'On-site',
-                          report.status == 'On-site',
-                        ),
+                        _progressStep('Reported', 'Reported'),
+                        _progressStep('In progress', 'InProgress'),
+                        _progressStep('Resolved', 'Resolved'),
+                        if (_isUpdatingStatus)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 12),
+                            child: LinearProgressIndicator(color: _orange),
+                          ),
                       ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 20),
+                const Text(
+                  'Select a status above, then confirm your change.',
+                  style: TextStyle(color: _secondaryText, fontSize: 13),
+                ),
+                const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
                     style: FilledButton.styleFrom(
                       backgroundColor: _orange,
                       foregroundColor: Colors.white,
-                      disabledBackgroundColor: const Color(0xFFE7E5E4),
-                      disabledForegroundColor: _secondaryText,
                       padding: const EdgeInsets.symmetric(vertical: 15),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
                     ),
-                    onPressed: report.status == 'On-site'
+                    onPressed: _isUpdatingStatus ||
+                        _selectedStatus == null ||
+                        _selectedStatus == _currentStatus ||
+                        !_hasValidIssueId
                         ? null
-                        : _advanceStatus,
-                    child: const Text(
-                      'Update Job Status',
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                        : _changeIssueStatus,
+                    child: Text(
+                      _isUpdatingStatus
+                          ? 'Updating...'
+                          : 'Confirm Status Change',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _openInvoice,
-                    icon: const Icon(Icons.receipt_long),
-                    label: const Text('View Invoice / Complete Job'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: _orange,
-                      side: const BorderSide(color: _orange),
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
+                if (report.issueId == null || report.issueId! <= 0)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Status updating requires issueId in the assigned-reports API response.',
+                      style: TextStyle(color: Colors.redAccent, fontSize: 12),
                     ),
                   ),
-                ),
               ],
             ),
           ),
@@ -690,26 +725,81 @@ class _SupervisorScheduledJobPageState
       ),
     );
   }
-  Widget _progressStep(String title, bool completed) {
+  String get _currentStatus {
+    final status = _group.firstReport.status.trim();
+    return status == 'In progress' ? 'InProgress' : status;
+  }
+
+  bool get _hasValidIssueId {
+    final ids = _group.reports.map((report) => report.issueId).toSet();
+    return ids.length == 1 && ids.single != null && ids.single! > 0;
+  }
+
+  Widget _progressStep(String title, String status) {
+    final isCurrent = _currentStatus == status;
+    final isPending = _selectedStatus == status && !isCurrent;
+    final canSelect = !_isUpdatingStatus && _hasValidIssueId;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Icon(
-            completed
-                ? Icons.check_circle
-                : Icons.radio_button_unchecked,
-            color: completed ? _orange : const Color(0xFFBDB8B4),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            title,
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: completed ? _darkText : _secondaryText,
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Material(
+        color: isPending || (isCurrent && _selectedStatus == null)
+            ? const Color(0xFFFFF1E8)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: canSelect
+              ? () => setState(() {
+            _selectedStatus = isCurrent ? null : status;
+          })
+              : null,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            child: Row(
+              children: [
+                Icon(
+                  isCurrent
+                      ? Icons.check_circle
+                      : isPending
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
+                  color: isCurrent || isPending
+                      ? _orange
+                      : const Color(0xFFBDB8B4),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight: isCurrent || isPending
+                          ? FontWeight.bold
+                          : FontWeight.w600,
+                      color: isCurrent || isPending ? _orange : _darkText,
+                    ),
+                  ),
+                ),
+                if (isCurrent)
+                  const Text(
+                    'Current',
+                    style: TextStyle(color: _orange, fontSize: 12),
+                  )
+                else if (isPending)
+                  const Text(
+                    'Selected',
+                    style: TextStyle(color: _orange, fontSize: 12),
+                  )
+                else if (canSelect)
+                    const Icon(
+                      Icons.touch_app_outlined,
+                      color: _orange,
+                      size: 20,
+                    ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

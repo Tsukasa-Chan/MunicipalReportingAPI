@@ -9,6 +9,7 @@ class ReportRequest {
   ReportRequest({
     required this.id,
     this.backendId,
+    this.issueId,
     this.areaId,
     this.latitude,
     this.longitude,
@@ -42,10 +43,12 @@ class ReportRequest {
     this.workerSignature = '',
     this.storageType = 'online',
   }) : createdAt = createdAt ?? DateTime.now(),
-       queuedAt = queuedAt ?? createdAt ?? DateTime.now();
+        queuedAt = queuedAt ?? createdAt ?? DateTime.now();
 
   final int id;
   int? backendId;
+  // Identifies the shared municipal Issue; distinct from report id/backendId.
+  int? issueId;
   int? areaId;
   double? latitude;
   double? longitude;
@@ -92,6 +95,7 @@ class ReportRequest {
   Map<String, dynamic> toJson() => {
     'id': id,
     'backendId': backendId,
+    'issueId': issueId,
     'areaId': areaId,
     'latitude': latitude,
     'longitude': longitude,
@@ -129,6 +133,7 @@ class ReportRequest {
   factory ReportRequest.fromJson(Map<String, dynamic> json) => ReportRequest(
     id: json['id'] as int,
     backendId: (json['backendId'] as num?)?.toInt(),
+    issueId: (json['issueId'] as num?)?.toInt(),
     areaId: (json['areaId'] as num?)?.toInt(),
     latitude: (json['latitude'] as num?)?.toDouble(),
     longitude: (json['longitude'] as num?)?.toDouble(),
@@ -140,7 +145,7 @@ class ReportRequest {
     imagePath: json['imagePath'] as String? ?? '',
     createdAt: DateTime.parse(json['createdAt'] as String),
     queuedAt:
-        DateTime.tryParse(json['queuedAt'] as String? ?? '') ?? DateTime.now(),
+    DateTime.tryParse(json['queuedAt'] as String? ?? '') ?? DateTime.now(),
     submittedAt: json['submittedAt'] == null
         ? null
         : DateTime.tryParse(json['submittedAt'] as String),
@@ -148,7 +153,7 @@ class ReportRequest {
     description: json['description'] as String? ?? '',
     status: json['status'] as String? ?? 'Pending',
     assignedSupervisorUsername:
-        json['assignedSupervisorUsername'] as String? ?? '',
+    json['assignedSupervisorUsername'] as String? ?? '',
     scheduledAt: json['scheduledAt'] == null
         ? null
         : DateTime.tryParse(json['scheduledAt'] as String),
@@ -256,7 +261,7 @@ class ReportStore {
       ..clear()
       ..addAll(
         storedReports.map(
-          (value) =>
+              (value) =>
               ReportRequest.fromJson(jsonDecode(value) as Map<String, dynamic>),
         ),
       );
@@ -265,7 +270,7 @@ class ReportStore {
           _reports
               .map((report) => report.id)
               .reduce((first, second) => first > second ? first : second) +
-          1;
+              1;
     }
   }
 
@@ -306,12 +311,12 @@ class ReportStore {
   static List<ReportRequest> reportsForArea(String area) {
     final normalizedArea = area.trim().toLowerCase();
     final areaReports =
-        _reports
-            .where(
-              (report) => report.area.trim().toLowerCase() == normalizedArea,
-            )
-            .toList()
-          ..sort((first, second) => second.id.compareTo(first.id));
+    _reports
+        .where(
+          (report) => report.area.trim().toLowerCase() == normalizedArea,
+    )
+        .toList()
+      ..sort((first, second) => second.id.compareTo(first.id));
     return List.unmodifiable(areaReports);
   }
 
@@ -324,22 +329,22 @@ class ReportStore {
       return const [];
     }
     final dayReports =
-        _reports.where((report) {
-          final scheduledAt = report.scheduledAt?.toLocal();
-          return report.assignedSupervisorUsername.trim().toLowerCase() ==
-                  normalizedUsername &&
-              AuthStore.canSuperviseIssue(
-                supervisorUsername: normalizedUsername,
-                issueType: report.issueType,
-              ) &&
-              scheduledAt != null &&
-              scheduledAt.year == date.year &&
-              scheduledAt.month == date.month &&
-              scheduledAt.day == date.day;
-        }).toList()..sort((first, second) {
-          final firstDate = first.scheduledAt!.compareTo(second.scheduledAt!);
-          return firstDate != 0 ? firstDate : first.id.compareTo(second.id);
-        });
+    _reports.where((report) {
+      final scheduledAt = report.scheduledAt?.toLocal();
+      return report.assignedSupervisorUsername.trim().toLowerCase() ==
+          normalizedUsername &&
+          AuthStore.canSuperviseIssue(
+            supervisorUsername: normalizedUsername,
+            issueType: report.issueType,
+          ) &&
+          scheduledAt != null &&
+          scheduledAt.year == date.year &&
+          scheduledAt.month == date.month &&
+          scheduledAt.day == date.day;
+    }).toList()..sort((first, second) {
+      final firstDate = first.scheduledAt!.compareTo(second.scheduledAt!);
+      return firstDate != 0 ? firstDate : first.id.compareTo(second.id);
+    });
     return List.unmodifiable(dayReports);
   }
 
@@ -356,8 +361,8 @@ class ReportStore {
     if (supervisor?.isSupervisor != true ||
         assignedReports.isEmpty ||
         assignedReports.any(
-          (report) =>
-              !_reports.contains(report) ||
+              (report) =>
+          !_reports.contains(report) ||
               !AuthStore.canSuperviseIssue(
                 supervisorUsername: supervisorUsername,
                 issueType: report.issueType,
@@ -389,7 +394,7 @@ class ReportStore {
 
     final groupedReports = groups.values.map(ReportGroup.fromReports).toList()
       ..sort(
-        (first, second) =>
+            (first, second) =>
             second.firstReport.id.compareTo(first.firstReport.id),
       );
     return List.unmodifiable(groupedReports);
@@ -419,14 +424,14 @@ class ReportStore {
     }
 
     final workerReports =
-        _reports
-            .where(
-              (report) =>
-                  report.assignedWorkerUsername.trim().toLowerCase() ==
-                  normalizedUsername,
-            )
-            .toList()
-          ..sort((first, second) => second.id.compareTo(first.id));
+    _reports
+        .where(
+          (report) =>
+      report.assignedWorkerUsername.trim().toLowerCase() ==
+          normalizedUsername,
+    )
+        .toList()
+      ..sort((first, second) => second.id.compareTo(first.id));
     return List.unmodifiable(workerReports);
   }
 
@@ -481,14 +486,14 @@ class ReportStore {
     _reports
         .where(
           (report) =>
-              report.storageType == 'offline' && report.syncStatus != 'Synced',
-        )
+      report.storageType == 'offline' && report.syncStatus != 'Synced',
+    )
         .toList(),
   );
 
   static Future<void> syncPendingReports(
-    Future<bool> Function(ReportRequest report) sendReport,
-  ) async {
+      Future<bool> Function(ReportRequest report) sendReport,
+      ) async {
     for (final report in pendingSyncReports.toList()) {
       if (await sendReport(report)) {
         report.storageType = 'online';

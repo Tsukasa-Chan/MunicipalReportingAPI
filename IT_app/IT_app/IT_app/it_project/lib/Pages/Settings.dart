@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -7,6 +6,7 @@ import 'OtherReports.dart';
 import 'Profile.dart';
 import 'Reporting.dart';
 import 'auth_store.dart';
+import 'legal_documents.dart';
 import 'Supervisor_theme.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -273,11 +273,23 @@ class _SettingsPageState extends State<SettingsPage>
                     context,
                     icon: Icons.privacy_tip_outlined,
                     label: 'Privacy Policy',
-                    onTap: () => _showInformationDialog(
+                    onTap: () => _showLegalDialog(
                       context,
-                      title: 'Privacy Policy',
-                      message:
-                      'Your account information is used to manage reports and provide support. Keep your login details private.',
+                      title: privacyPolicyTitle,
+                      text: privacyPolicyText,
+                      fileName: privacyPolicyFileName,
+                    ),
+                  ),
+
+                  _bubbleButton(
+                    context,
+                    icon: Icons.description_outlined,
+                    label: 'Terms & Conditions',
+                    onTap: () => _showLegalDialog(
+                      context,
+                      title: termsTitle,
+                      text: termsText,
+                      fileName: termsFileName,
                     ),
                   ),
 
@@ -565,6 +577,88 @@ class _SettingsPageState extends State<SettingsPage>
                 fontWeight: FontWeight.w600,
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Full legal documents with PDF download, styled like Settings 2 dialogs.
+  void _showLegalDialog(
+      BuildContext context, {
+        required String title,
+        required String text,
+        required String fileName,
+      }) {
+    final messenger = ScaffoldMessenger.of(context);
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: _borderColor),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: _darkText,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _cream,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: SingleChildScrollView(
+              child: Text(
+                text,
+                style: const TextStyle(
+                  color: _secondaryText,
+                  fontSize: 15,
+                  height: 1.5,
+                ),
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton.icon(
+            style: TextButton.styleFrom(foregroundColor: _orange),
+            icon: const Icon(Icons.download),
+            label: const Text('Download'),
+            onPressed: () async {
+              try {
+                final savedPath = await downloadPdfFile(fileName, title, text);
+                if (!messenger.mounted) return;
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      savedPath == null || savedPath.isEmpty
+                          ? '$title downloaded.'
+                          : '$title saved.',
+                    ),
+                  ),
+                );
+              } catch (_) {
+                if (!messenger.mounted) return;
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Could not download the file.'),
+                  ),
+                );
+              }
+            },
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: _orange),
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
           ),
         ],
       ),

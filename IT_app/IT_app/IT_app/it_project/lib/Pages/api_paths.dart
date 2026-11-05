@@ -72,6 +72,15 @@ class ApiPaths {
     return '/api/reports/$reportId/status';
   }
 
+  // Backend issue status; issueId identifies the shared municipal Issue,
+  // not an individual resident Report.
+  static String issueStatus(int issueId) {
+    if (issueId <= 0) {
+      throw ArgumentError.value(issueId, 'issueId', 'Must be positive.');
+    }
+    return '/api/Issues/$issueId/status';
+  }
+
   // gets a reports invoice.
   static String reportInvoice(int reportId) {
     if (reportId <= 0) {

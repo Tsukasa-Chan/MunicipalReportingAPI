@@ -244,18 +244,11 @@ class _SupervisorOverviewState extends State<_SupervisorOverview> {
     );
     final todayJobCount = ReportStore.groupReports(todayJobs).length;
     final today = DateTime.now();
-    // Count reports created today that are assigned to this supervisor.
-    final dailyReports = reports.where((report) {
-      final createdAt = report.createdAt.toLocal();
-      return createdAt.year == today.year &&
-          createdAt.month == today.month &&
-          createdAt.day == today.day;
-    }).length;
     final reported = reports
         .where((report) => report.status == 'Reported')
         .length;
     final inProgress = reports
-        .where((report) => report.status == 'In progress')
+        .where((report) => report.status == 'InProgress' || report.status == 'In progress')
         .length;
     final resolved = reports
         .where((report) => report.status == 'Resolved')
@@ -291,14 +284,8 @@ class _SupervisorOverviewState extends State<_SupervisorOverview> {
                 builder: (_) => SupervisorSchedulePage(day: _now),
               ),
             ).then((_) {
-              if (mounted) setState(() {});
+              if (mounted) _loadSupervisorReports();
             }),
-          ),
-          const SizedBox(height: 20),
-          _DailyReportsBubble(
-            reportType: supervisor?.supervisorIssueType,
-            count: dailyReports,
-            onTap: () => _showReports(context, reports),
           ),
           const SizedBox(height: 24),
           // Show the loading or error message while fetching dashboard data.
@@ -373,82 +360,8 @@ class _SupervisorOverviewState extends State<_SupervisorOverview> {
       ),
     );
   }
-  void _showReports(BuildContext context, List<ReportRequest> reports) {
-    final groupedReports = ReportStore.groupReports(reports);
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: _borderColor),
-        ),
-        title: Text(
-          '${AuthStore.currentUser?.supervisorIssueType ?? 'All'} reports',
-          style: const TextStyle(
-            color: _darkText,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: SizedBox(
-          width: 480,
-          child: groupedReports.isEmpty
-              ? const Text(
-            'No reports found for this report type.',
-            style: TextStyle(color: _secondaryText),
-          )
-              : ListView.separated(
-            shrinkWrap: true,
-            itemCount: groupedReports.length,
-            separatorBuilder: (_, _) => const Divider(
-              color: _borderColor,
-            ),
-            itemBuilder: (context, index) {
-              final group = groupedReports[index];
-              final report = group.firstReport;
-              return ListTile(
-                contentPadding: const EdgeInsets.symmetric(vertical: 4),
-                title: Text(
-                  'Report #${report.id}: '
-                      '${report.issueType} - ${report.issue}',
-                  style: const TextStyle(
-                    color: _darkText,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                subtitle: Text(
-                  'Reported by ${group.reporterCount} '
-                      '${group.reporterCount == 1 ? 'person' : 'people'} '
-                      '(first: ${report.senderName})\n'
-                      'Date: ${report.createdAt.toLocal()}\n'
-                      'Area: ${report.area} • Status: ${report.status}'
-                      '${report.description.isEmpty ? '' : '\n${report.description}'}',
-                  style: const TextStyle(
-                    color: _secondaryText,
-                    height: 1.5,
-                  ),
-                ),
-                isThreeLine: true,
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text(
-              'Close',
-              style: TextStyle(
-                color: _orange,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
+
 class _ScheduleCard extends StatelessWidget {
   const _ScheduleCard({
     required this.now,
@@ -518,93 +431,6 @@ class _ScheduleCard extends StatelessWidget {
                       style: const TextStyle(
                         color: _secondaryText,
                         fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(
-                Icons.chevron_right,
-                color: _orange,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-class _DailyReportsBubble extends StatelessWidget {
-  const _DailyReportsBubble({
-    required this.reportType,
-    required this.count,
-    required this.onTap,
-  });
-  static const Color _orange = supervisorPrimaryColor;
-  static const Color _darkText = Color(0xFF292524);
-  static const Color _secondaryText = Color(0xFF78716C);
-  static const Color _borderColor = Color(0xFFE7E5E4);
-  final String? reportType;
-  final int count;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: _borderColor),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 18,
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 25,
-                backgroundColor: _orange,
-                foregroundColor: Colors.white,
-                child: Text(
-                  '$count',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      reportType == null
-                          ? 'Today’s reports'
-                          : 'Today’s $reportType reports',
-                      style: const TextStyle(
-                        color: _darkText,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      reportType == null
-                          ? 'Tap to view today’s reports'
-                          : 'Tap to view today’s $reportType reports',
-                      style: const TextStyle(
-                        color: _secondaryText,
-                        fontSize: 13,
                       ),
                     ),
                   ],
