@@ -180,6 +180,29 @@ class AuthApi {
     return _decodeJsonObject(response);
   }
 
+  // Loads the current status and assignment timestamps for a municipal issue.
+  Future<Map<String, dynamic>> getIssueDetails({
+    required int issueId,
+    required String accessToken,
+  }) async {
+    if (issueId <= 0) {
+      throw ArgumentError.value(issueId, 'issueId', 'Must be positive.');
+    }
+
+    final response = await _send(
+      () => _client.get(
+        _endpoint('/api/Issues/$issueId'),
+        headers: _headers(accessToken: accessToken),
+      ),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _exceptionFromResponse(response);
+    }
+
+    return _decodeJsonObject(response);
+  }
+
   // CREATE REPORT
   // Backend: POST /api/Reports
   // Uses multipart form data because the backend accepts an optional image.

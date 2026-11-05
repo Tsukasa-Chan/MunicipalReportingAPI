@@ -10,6 +10,7 @@ class ReportRequest {
     required this.id,
     this.backendId,
     this.issueId,
+    this.updatedAt,
     this.areaId,
     this.latitude,
     this.longitude,
@@ -49,6 +50,7 @@ class ReportRequest {
   int? backendId;
   // Identifies the shared municipal Issue; distinct from report id/backendId.
   int? issueId;
+  DateTime? updatedAt;
   int? areaId;
   double? latitude;
   double? longitude;
@@ -96,6 +98,7 @@ class ReportRequest {
     'id': id,
     'backendId': backendId,
     'issueId': issueId,
+    'updatedAt': updatedAt?.toIso8601String(),
     'areaId': areaId,
     'latitude': latitude,
     'longitude': longitude,
@@ -134,6 +137,9 @@ class ReportRequest {
     id: json['id'] as int,
     backendId: (json['backendId'] as num?)?.toInt(),
     issueId: (json['issueId'] as num?)?.toInt(),
+    updatedAt: json['updatedAt'] == null
+        ? null
+        : DateTime.tryParse(json['updatedAt'] as String),
     areaId: (json['areaId'] as num?)?.toInt(),
     latitude: (json['latitude'] as num?)?.toDouble(),
     longitude: (json['longitude'] as num?)?.toDouble(),
@@ -445,6 +451,8 @@ class ReportStore {
     required String imagePath,
     bool isOfflineSubmission = false,
     int? backendId,
+    int? issueId,
+    String status = 'Pending',
     int? areaId,
     double? latitude,
     double? longitude,
@@ -457,6 +465,7 @@ class ReportStore {
     final report = ReportRequest(
       id: _nextId++,
       backendId: backendId,
+      issueId: issueId,
       areaId: areaId,
       latitude: latitude,
       longitude: longitude,
@@ -467,6 +476,7 @@ class ReportStore {
       issue: issue,
       area: area.trim(),
       description: description.trim(),
+      status: status,
       pinLocation: pinLocation.trim(),
       locationAddress: locationAddress.trim(),
       storageType: isOfflineSubmission ? 'offline' : 'online',
@@ -480,6 +490,20 @@ class ReportStore {
     _reports.insert(0, report);
     _save();
     return report;
+  }
+
+  static Future<void> updateIssueDetails({
+    required ReportRequest report,
+    required String status,
+    DateTime? scheduledAt,
+    DateTime? updatedAt,
+  }) async {
+    if (!_reports.contains(report)) return;
+
+    report.status = status;
+    report.scheduledAt = scheduledAt;
+    report.updatedAt = updatedAt;
+    await _save();
   }
 
   static List<ReportRequest> get pendingSyncReports => List.unmodifiable(
