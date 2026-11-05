@@ -423,6 +423,32 @@ class AuthApi {
     return _responseMessage(response);
   }
 
+  // SUBMIT BUG REPORT
+  // Backend: POST /api/BugReports (authenticated).
+  // Returns only after the backend confirms the report was accepted.
+  Future<void> submitBugReport({
+    required String accessToken,
+    required String name,
+    required String email,
+    required String description,
+  }) async {
+    final response = await _send(
+          () => _client.post(
+        _endpoint('/api/BugReports'),
+        headers: _headers(accessToken: accessToken),
+        body: jsonEncode({
+          'name': name.trim(),
+          'email': email.trim(),
+          'description': description.trim(),
+        }),
+      ),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _exceptionFromResponse(response);
+    }
+  }
+
   // Shared POST helper for endpoints returning JSON objects.
   Future<Map<String, dynamic>> _post(
       String path,
