@@ -249,7 +249,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         }
 
                         if (value != passwordController.text) {
-                          return 'Security prompt: your passwords do not match';
+                          return 'Your passwords do not match';
                         }
 
                         return null;
