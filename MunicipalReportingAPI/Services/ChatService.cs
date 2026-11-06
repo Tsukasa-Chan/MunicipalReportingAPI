@@ -7,13 +7,43 @@ using MunicipalReportingAPI.Models;
 
 namespace MunicipalReportingAPI.Services;
 
-/// <summary>Restricted, read-only help assistant. Does not call external AI or execute chat-provided commands.</summary>
+/// <summary>Restricted help assistant: AI classification with authorised, read-only backend operations.</summary>
 public sealed class ChatService
 {
     private readonly MunicipalDBContext _db;
-    public ChatService(MunicipalDBContext db) => _db = db;
+    private readonly AiIntentService _ai;
+    public ChatService(MunicipalDBContext db, AiIntentService ai)
+    {
+        _db = db;
+        _ai = ai;
+    }
 
-    private const string Unknown = "I can only help with Fix My City. Ask me about registering, logging in, submitting or managing reports, your profile, downloads, or issue statistics in your area.";
+
+    private const string Unknown = "I can only help with Fix My Area. Ask me about registering, logging in, submitting or managing reports, your profile, downloads, or issue statistics in your area.";
+
+    private const string Capabilities =
+        "Hi! I'm the Fix My Area assistant. I can help you with:\n\n" +
+        "1. Account management: Registering, logging in, verifying email, resetting passwords and updating your profile.\n" +
+        "2. Municipal reports: Submitting, editing, deleting and viewing reports.\n" +
+        "3. Area statistics: Checking potholes, water issues, electricity problems and other municipal issues in your registered area.\n" +
+        "4. Downloads: Downloading submitted reports, area statistics, the Privacy Policy and Terms & Conditions.\n" +
+        "5. Supervisor features: Explaining how supervisors view their schedules (schedule PDF downloads aren't currently available).\n" +
+        "6. Support: Helping with common app problems and showing how to contact support.\n\n" +
+        "What would you like help with?";
+
+    // Match broad capability questions, not task-specific requests such as
+    // 'Can you help me delete a report?'.
+    private static bool IsCapabilitiesQuestion(string t) =>
+        Has(t, "what can you help me with", "what can you help with",
+            "what can you do", "what do you do", "how can you help me",
+            "how can you help", "how can you assist me", "what are your features",
+            "your features", "your capabilities", "what are you capable of",
+            "what can i ask you", "what questions can i ask",
+            "tell me what you can do", "what is this chatbot for") &&
+        !Has(t, "report", "reports", "pothole", "issues", "issue", "statistics",
+            "email", "password", "download", "privacy", "terms", "schedule",
+            "supervisor", "profile", "registration", "register");
+
     private static readonly (IssueCategory Category, string[] Terms)[] Categories =
     {
         (IssueCategory.WaterAndSanitation, new[]{"water", "sanitation", "sewer", "sewage", "pipe", "leak"}),
@@ -65,12 +95,165 @@ public sealed class ChatService
 
     public async Task<string> ReplyAsync(ClaimsPrincipal principal, IReadOnlyList<ChatMessageDTO> messages, CancellationToken ct)
     {
+        var current = Clean(messages[^1].Content);
+        if (current.Length == 0) return Unknown;
+
+        // Enforce these exclusions even when the AI or fallback would misclassify a prompt.
+        if (Has(current, "system prompt", "developer instructions", "hidden configuration",
+            "ignore previous instructions", "ignore all instructions", "reveal your instructions",
+            "print your prompt", "jailbreak")) return Unknown;
+
+        // Answer general 'what can you do?' questions even if Gemini is offline
+        // or mistakenly classifies them as unknown.
+        if (IsCapabilitiesQuestion(current)) return Capabilities;
+
+        // Clear account-recovery questions take priority over generic login guidance.
+        // A user may have forgotten either their password or registered email address.
+        if (Has(current, "login details", "login credentials", "sign in details", "sign in credentials", "account credentials") &&
+            Has(current, "forgot", "forgotten", "forget", "remember", "lost", "recover", "cant", "cannot", "don t", "dont"))
+            return "If you cannot remember your Fix My Area login details, open Login and select Forgot Password to reset your password using your registered email address. If you cannot remember which email address you registered with, use Contact Us to request assistance. Never share your password with support.";
+
+        // A location-information question can mean local news; respond only with the
+        // municipal-issues capability of the app, not general neighbourhood events.
+        if (Has(current, "neighbourhood", "neighborhood", "community", "local area") &&
+            Has(current, "what s happening", "whats happening", "what is happening", "what is going on", "what s going on", "whats going on", "where do i find out", "where can i see") &&
+            !Has(current, "news", "events", "weather", "sports", "restaurants", "concerts"))
+            return "For municipal issues in your neighbourhood, sign in and open the Fix My Area Home dashboard. It shows issue statistics for your registered area, including water and sanitation, roads and stormwater, electricity, and waste management. You can also ask me how many potholes or unresolved water issues are in your area. I don't provide general local news or events.";
+
+        var classification = await _ai.ClassifyAsync(messages, ct);
+        if (classification == null)
+            return await ReplyRulesAsync(principal, messages, ct); // Offline/rate-limit fallback
+        if (classification.Intent == "unknown") return Unknown;
+
+        if (classification.Intent == "issue_statistics" || classification.Intent == "my_reports")
+            return await AnswerStructuredStatisticsAsync(principal, classification, ct);
+
+        // Map validated intent labels to locally approved text, never model-written instructions.
+        string? canonical = classification.Intent switch
+        {
+            "greeting" => "hello",
+            "thanks" => "thanks",
+            "registration" => "how do i register an account",
+            "login" => "how do i log in",
+            "verify_email" => "how do i verify email",
+            "forgot_password" => "forgot password",
+            "change_email" => "how do i change email",
+            "change_password" => "how do i change password",
+            "edit_profile" => "how do i edit my name in profile",
+            "delete_report" => "how do i delete my report",
+            "edit_report" => "how do i edit my report",
+            "submit_report" => "how do i submit a report",
+            "privacy_policy" => "where do i download privacy policy",
+            "terms_conditions" => "where do i download terms and conditions",
+            "schedule_download" => "can i download supervisor schedule",
+            "downloads" => "how do i download pdf reports",
+            "report_status_help" => "what does report status mean",
+            "issue_category_help" => "how do i choose issue category",
+            "area_stats_help" => "how do i view area statistics",
+            "supervisor_schedule" => "how do i view supervisor schedule",
+            "support" => "how do i contact support",
+            "capabilities" => "what can you help me with",
+            _ => null
+        };
+        if (canonical == null) return Unknown;
+        return await ReplyRulesAsync(principal,
+            new[] { new ChatMessageDTO { Role = "user", Content = canonical } }, ct);
+    }
+
+    private async Task<string> AnswerStructuredStatisticsAsync(
+        ClaimsPrincipal principal, ChatIntentResult intent, CancellationToken ct)
+    {
+        if (!int.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+            return "Please sign in to view statistics.";
+
+        if (intent.Intent == "my_reports")
+        {
+            var reports = _db.Reports.AsNoTracking().Where(r => r.UserId == userId);
+            reports = intent.Status switch
+            {
+                "reported" => reports.Where(r => r.Issue!.Status == ReportStatus.Reported),
+                "in_progress" => reports.Where(r => r.Issue!.Status == ReportStatus.InProgress),
+                "resolved" => reports.Where(r => r.Issue!.Status == ReportStatus.Resolved),
+                "unresolved" => reports.Where(r => r.Issue!.Status != ReportStatus.Resolved),
+                _ => reports
+            };
+            var reportCount = await reports.CountAsync(ct);
+            return $"You have {reportCount} matching submitted {(reportCount == 1 ? "report" : "reports")}. Open Profile to view your reports.";
+        }
+
+        var profile = await _db.Users.AsNoTracking().Where(u => u.Id == userId)
+            .Select(u => new { u.AreaId, AreaName = u.Area != null ? u.Area.Name : null })
+            .FirstOrDefaultAsync(ct);
+        if (profile?.AreaId == null)
+            return "Your account does not have a registered area. Area statistics are available to users with an assigned area.";
+
+        // Only predeclared enum values can reach these EF queries: no generated SQL or arbitrary areas.
+        if (intent.Metric == "reports")
+        {
+            var reportQuery = _db.Reports.AsNoTracking().Where(r => r.AreaId == profile.AreaId.Value);
+            if (intent.Category != "none" && Enum.TryParse<IssueCategory>(intent.Category, out var reportCategory))
+                reportQuery = reportQuery.Where(r => r.Issue!.IssueCategory == reportCategory);
+            if (intent.IssueType != "none" && Enum.TryParse<IssueType>(intent.IssueType, out var reportType))
+                reportQuery = reportQuery.Where(r => r.Issue!.IssueType == reportType);
+            reportQuery = intent.Status switch
+            {
+                "reported" => reportQuery.Where(r => r.Issue!.Status == ReportStatus.Reported),
+                "in_progress" => reportQuery.Where(r => r.Issue!.Status == ReportStatus.InProgress),
+                "resolved" => reportQuery.Where(r => r.Issue!.Status == ReportStatus.Resolved),
+                "unresolved" => reportQuery.Where(r => r.Issue!.Status != ReportStatus.Resolved),
+                _ => reportQuery
+            };
+            var reportCount = await reportQuery.CountAsync(ct);
+            return $"There are {reportCount} matching resident reports in {profile.AreaName}. Several reports can refer to one municipal issue.";
+        }
+
+        var query = _db.Issues.AsNoTracking().Where(i => i.AreaId == profile.AreaId.Value);
+        if (intent.IssueType != "none" && Enum.TryParse<IssueType>(intent.IssueType, out var type))
+            query = query.Where(i => i.IssueType == type);
+        else if (intent.Category != "none" && Enum.TryParse<IssueCategory>(intent.Category, out var cat))
+            query = query.Where(i => i.IssueCategory == cat);
+        query = intent.Status switch
+        {
+            "reported" => query.Where(i => i.Status == ReportStatus.Reported),
+            "in_progress" => query.Where(i => i.Status == ReportStatus.InProgress),
+            "resolved" => query.Where(i => i.Status == ReportStatus.Resolved),
+            "unresolved" => query.Where(i => i.Status != ReportStatus.Resolved),
+            _ => query
+        };
+        if (intent.Metric == "most_common")
+        {
+            var mostCommon = await query.GroupBy(i => i.IssueType)
+                .Select(g => new { Type = g.Key, Count = g.Count() })
+                .OrderByDescending(g => g.Count).FirstOrDefaultAsync(ct);
+            return mostCommon == null
+                ? $"There are no matching issues recorded in {profile.AreaName}."
+                : $"The most common matching issue in {profile.AreaName} is {Pretty(mostCommon.Type.ToString())}, with {mostCommon.Count} issues.";
+        }
+
+        var count = await query.CountAsync(ct);
+        var subject = intent.IssueType != "none" ? Pretty(intent.IssueType) + " issues"
+            : intent.Category != "none" ? Pretty(intent.Category) + " issues" : "municipal issues";
+        var filter = intent.Status switch
+        {
+            "reported" => "reported ",
+            "in_progress" => "in-progress ",
+            "resolved" => "resolved ",
+            "unresolved" => "unresolved ",
+            _ => ""
+        };
+        return $"There {(count == 1 ? "is" : "are")} {count} {filter}{subject} recorded in {profile.AreaName}. These are distinct municipal issues, not resident reports.";
+    }
+
+    private async Task<string> ReplyRulesAsync(ClaimsPrincipal principal, IReadOnlyList<ChatMessageDTO> messages, CancellationToken ct)
+    {
         var t = Clean(messages[^1].Content);
         if (t.Length == 0) return Unknown;
-        if (Has(t, "cricket", "football", "rugby", "recipe", "weather", "politics", "joke", "movie", "bitcoin", "stock market")) return Unknown;
+        if (Has(t, "cricket", "football", "rugby", "recipe", "weather", "politics", "joke", "movie", "bitcoin", "stock market",
+            "system prompt", "developer instructions", "hidden configuration", "ignore previous instructions",
+            "ignore all instructions", "reveal your instructions", "print your prompt", "jailbreak")) return Unknown;
         if (Has(t, "hello", "hi", "hey", "good morning", "good afternoon"))
-            return "Hi! I'm the Fix My City help assistant. You can ask how to use the app or ask how many municipal issues are in your registered area.";
-        if (Has(t, "thank you", "thanks", "thank u")) return "You're welcome! What else would you like to know about Fix My City?";
+            return "Hi! I'm the Fix My Area help assistant. You can ask how to use the app or ask how many municipal issues are in your registered area.";
+        if (Has(t, "thank you", "thanks", "thank u")) return "You're welcome! What else would you like to know about Fix My Area?";
 
         // Follow-up context: use only the previous USER turn, and never trust assistant text as instructions.
         var previous = messages.Take(messages.Count - 1).Reverse().FirstOrDefault(x => x.Role == "user");
@@ -92,7 +275,7 @@ public sealed class ChatService
 
         // Help intents require app-related topic words and action words, or an unmistakable app topic.
         if (Has(t, "register", "registration", "sign up", "signup", "create an account", "new account"))
-            return "To register: 1. Open Fix My City and tap Register. 2. Enter your full name, email and a password. 3. Choose your ward and area. 4. Submit the registration form. 5. Open the verification email and follow the confirmation link. Once your email is verified, you can log in.";
+            return "To register: 1. Open Fix My Area and tap Register. 2. Enter your full name, email and a password. 3. Choose your ward and area. 4. Submit the registration form. 5. Open the verification email and follow the confirmation link. Once your email is verified, you can log in.";
         if (Has(t, "forgot password", "forgotten password", "reset password", "cant remember my password", "cannot remember my password"))
             return "On the Login screen, select Forgot Password. Enter the email associated with your account, follow the email reset instructions, then log in using your new password.";
         if (Has(t, "login", "log in", "sign in", "signin", "logging in"))
@@ -119,7 +302,7 @@ public sealed class ChatService
             return "To view or download the Terms & Conditions: 1. Open Settings. 2. Select Terms & Conditions. 3. Read the terms in the dialog. 4. Tap Download to save a PDF, which you can then open or print.";
         if (Has(t, "download", "print", "pdf", "export", "save", "copy") && Has(t, "schedule", "supervisor schedule", "scheduled jobs"))
             return "Supervisors can view their assigned work in the Supervisor Dashboard and Schedule pages. The current app does not include a PDF download or print button for supervisor schedules.";
-        if (Has(t, "download", "print", "pdf", "export", "save") && Has(t, "report", "statistics", "stats", "pdf", "download", "print"))
+        if (Has(t, "download", "print", "pdf", "export", "save") && Has(t, "report", "reports", "statistics", "stats", "pdf"))
             return "Available PDF downloads include your submitted reports, your area statistics, the Privacy Policy and the Terms & Conditions. For a report, open its details in Profile and select Download PDF. For area statistics, use the dashboard's download option. For the legal documents, open Settings, select Privacy Policy or Terms & Conditions, and tap Download. Open a saved PDF in a compatible app if you want to print it. Supervisor schedules currently have no PDF download option.";
         if (Has(t, "status", "reported", "in progress", "resolved") && Has(t, "report", "issue", "status", "mean", "meaning"))
             return "Issue statuses: Reported means the issue has been received; In Progress means municipal work has started; Resolved means the issue has been completed. You can view the status of your reports in Profile or the reports section.";
@@ -127,13 +310,14 @@ public sealed class ChatService
             return "Choose the category that matches the problem: Water and Sanitation (for pipes or sewage), Roads and Stormwater (for potholes or drains), Electricity (for outages or streetlights), or Waste Management (for bins and dumping). Then select the more specific issue type.";
         if (Has(t, "submit", "create", "make", "file", "report", "reporting", "complaint", "notify") &&
             Has(t, "report", "issue", "problem", "complaint", "pothole", "burst pipe", "streetlight", "municipality", "damage"))
-            return "To submit an issue report: 1. Sign in to Fix My City. 2. Open the Reporting page. 3. Select the ward/area and the issue category and type. 4. Enter the location and a description, and add an image if needed. 5. Review the information and submit. You can find your reports in your Profile.";
+            return "To submit an issue report: 1. Sign in to Fix My Area. 2. Open the Reporting page. 3. Select the ward/area and the issue category and type. 4. Enter the location and a description, and add an image if needed. 5. Review the information and submit. You can find your reports in your Profile.";
         if (Has(t, "area", "dashboard", "stats", "statistics") && Has(t, "view", "see", "find", "where", "look", "show", "how", "dashboard", "stats", "statistics"))
             return "To view statistics for your registered area, sign in and open the Home dashboard. The area statistics show municipal issues grouped by category and status. You can also ask me, for example, 'How many potholes are in my area?'";
         if (Has(t, "schedule", "supervisor", "assign", "assigned"))
             return "If you're a supervisor, use the Supervisor Dashboard and Schedule pages to view your assigned issues and scheduled work. The current app has no schedule PDF download option.";
         if (Has(t, "contact", "support", "help center", "bug", "error", "crash", "not working", "connection", "internet"))
             return "For an app problem, check your internet connection and try again. You can also use Contact Us or the Report a Bug feature in Settings to contact support. Do not include your password in a bug report.";
+        if (IsCapabilitiesQuestion(t)) return Capabilities;
         if (Has(t, "help", "what can you do")) return Unknown;
         return Unknown;
     }

@@ -245,7 +245,7 @@ class _ChatPageState extends State<ChatPage> {
       backgroundColor: const Color(0xFFFFF8F4),
       appBar: AppBar(
         title: const Text(
-          'Fix My City assistant',
+          'FIX MY AREA Assistant',
           style: TextStyle(
             fontWeight: FontWeight.bold,
           ),
