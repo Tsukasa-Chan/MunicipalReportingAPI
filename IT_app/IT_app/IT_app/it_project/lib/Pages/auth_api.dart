@@ -718,4 +718,57 @@ class AuthApi {
     if (decoded is List) return decoded;
     return [];
   }
+
+  Future<List<Map<String, dynamic>>> getMyReports({
+    required String accessToken,
+  }) async {
+    final response = await _send(
+      () => _client.get(
+        _endpoint(ApiPaths.myReports),
+        headers: _headers(accessToken: accessToken),
+      ),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _exceptionFromResponse(response);
+    }
+
+    final body = response.body.trim();
+    if (body.isEmpty) return const [];
+
+    final decoded = jsonDecode(body);
+    if (decoded is! List || decoded.any((item) => item is! Map)) {
+      throw const AuthApiException(
+        'The server returned an invalid reports response.',
+      );
+    }
+
+    return decoded
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList(growable: false);
+  }
+
+  Future<Map<String, dynamic>> submitReportFeedback({
+    required String accessToken,
+    required int reportId,
+    required int rating,
+    required String comment,
+  }) {
+    if (rating < 1 || rating > 5) {
+      throw ArgumentError.value(rating, 'rating', 'Must be between 1 and 5.');
+    }
+    if (comment.length > 1000) {
+      throw ArgumentError.value(
+        comment,
+        'comment',
+        'Must be 1000 characters or fewer.',
+      );
+    }
+
+    return _putJson(
+      ApiPaths.reportFeedback(reportId),
+      {'rating': rating, 'comment': comment.trim()},
+      accessToken: accessToken,
+    );
+  }
 }

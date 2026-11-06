@@ -578,6 +578,16 @@ namespace MunicipalReportingAPI.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("FeedbackComment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int?>("FeedbackRating")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("FeedbackUpdatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("ImageUrl")
                         .HasColumnType("nvarchar(max)");
 

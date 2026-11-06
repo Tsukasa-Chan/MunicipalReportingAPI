@@ -10,6 +10,9 @@ class ReportRequest {
     required this.id,
     this.backendId,
     this.issueId,
+    this.feedbackRating,
+    this.feedbackComment = '',
+    this.feedbackUpdatedAt,
     this.areaId,
     this.latitude,
     this.longitude,
@@ -49,6 +52,9 @@ class ReportRequest {
   int? backendId;
   // Identifies the shared municipal Issue; distinct from report id/backendId.
   int? issueId;
+  int? feedbackRating;
+  String feedbackComment;
+  DateTime? feedbackUpdatedAt;
   int? areaId;
   double? latitude;
   double? longitude;
@@ -96,6 +102,9 @@ class ReportRequest {
     'id': id,
     'backendId': backendId,
     'issueId': issueId,
+    'feedbackRating': feedbackRating,
+    'feedbackComment': feedbackComment,
+    'feedbackUpdatedAt': feedbackUpdatedAt?.toIso8601String(),
     'areaId': areaId,
     'latitude': latitude,
     'longitude': longitude,
@@ -134,6 +143,11 @@ class ReportRequest {
     id: json['id'] as int,
     backendId: (json['backendId'] as num?)?.toInt(),
     issueId: (json['issueId'] as num?)?.toInt(),
+    feedbackRating: (json['feedbackRating'] as num?)?.toInt(),
+    feedbackComment: json['feedbackComment'] as String? ?? '',
+    feedbackUpdatedAt: json['feedbackUpdatedAt'] == null
+        ? null
+        : DateTime.tryParse(json['feedbackUpdatedAt'] as String),
     areaId: (json['areaId'] as num?)?.toInt(),
     latitude: (json['latitude'] as num?)?.toDouble(),
     longitude: (json['longitude'] as num?)?.toDouble(),
@@ -174,6 +188,56 @@ class ReportRequest {
     managerSignature: json['managerSignature'] as String? ?? '',
     workerSignature: json['workerSignature'] as String? ?? '',
     storageType: json['storageType'] as String? ?? 'online',
+  );
+
+  factory ReportRequest.fromApiJson(Map<String, dynamic> json) {
+    final backendId = (json['id'] as num?)?.toInt();
+    if (backendId == null || backendId <= 0) {
+      throw const FormatException('Report response has no valid ID.');
+    }
+
+    final createdAt = DateTime.tryParse(json['createdAt']?.toString() ?? '');
+    if (createdAt == null) {
+      throw const FormatException('Report response has no valid creation date.');
+    }
+    final areaName = json['areaName']?.toString().trim() ?? '';
+    final wardName = json['wardName']?.toString().trim() ?? '';
+    final area = [
+      if (wardName.isNotEmpty) wardName,
+      if (areaName.isNotEmpty) areaName,
+    ].join(' - ');
+    final feedbackUpdatedAt = DateTime.tryParse(
+      json['feedbackUpdatedAt']?.toString() ?? '',
+    );
+
+    return ReportRequest(
+      id: -backendId,
+      backendId: backendId,
+      issueId: (json['issueId'] as num?)?.toInt(),
+      feedbackRating: (json['feedbackRating'] as num?)?.toInt(),
+      feedbackComment: json['feedbackComment']?.toString() ?? '',
+      feedbackUpdatedAt: feedbackUpdatedAt?.toLocal(),
+      areaId: (json['areaId'] as num?)?.toInt(),
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      senderName: json['userFullName']?.toString() ?? '',
+      issueType: _humanizeApiName(json['issueCategory']?.toString() ?? ''),
+      issue: _humanizeApiName(json['issueType']?.toString() ?? ''),
+      area: area.isEmpty ? 'Area unavailable' : area,
+      createdAt: createdAt.toLocal(),
+      queuedAt: createdAt.toLocal(),
+      submittedAt: createdAt.toLocal(),
+      syncStatus: 'Synced',
+      description: json['description']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'Reported',
+      locationAddress: json['location']?.toString() ?? '',
+      storageType: 'online',
+    );
+  }
+
+  static String _humanizeApiName(String value) => value.replaceAllMapped(
+    RegExp(r'([a-z])([A-Z])'),
+    (match) => '${match[1]} ${match[2]}',
   );
 }
 
@@ -506,6 +570,18 @@ class ReportStore {
   static void updateStatus(ReportRequest report, String status) {
     report.status = status;
     _save();
+  }
+
+  static Future<void> updateResolutionFeedback({
+    required ReportRequest report,
+    required int rating,
+    required String comment,
+    required DateTime? updatedAt,
+  }) async {
+    report.feedbackRating = rating;
+    report.feedbackComment = comment;
+    report.feedbackUpdatedAt = updatedAt;
+    if (_reports.contains(report)) await _save();
   }
 
   static bool assignWorker({

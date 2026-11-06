@@ -16,6 +16,9 @@
         public double Latitude { get; set; }
         public double Longitude { get; set; }
         public string? Description { get; set; }
+        public int? FeedbackRating { get; set; }
+        public string? FeedbackComment { get; set; }
+        public DateTime? FeedbackUpdatedAt { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
 

@@ -127,6 +127,46 @@ namespace MunicipalReportingAPI.Controllers
             return Ok(await ToDtosAsync(reports));
         }
 
+        [Authorize]
+        [HttpPut("{id}/feedback")]
+        public async Task<IActionResult> SubmitResolutionFeedback(
+            int id,
+            [FromBody] SubmitResolutionFeedbackDTO dto)
+        {
+            var report = await ReportsWithDetails()
+                .FirstOrDefaultAsync(r => r.Id == id);
+
+            if (report == null)
+            {
+                return NotFound();
+            }
+
+            if (report.UserId != GetCurrentUserId())
+            {
+                return Forbid();
+            }
+
+            if (report.Issue?.Status != ReportStatus.Resolved)
+            {
+                return Conflict("Feedback can only be submitted after the issue is resolved.");
+            }
+
+            report.FeedbackRating = dto.Rating;
+            report.FeedbackComment = string.IsNullOrWhiteSpace(dto.Comment)
+                ? null
+                : dto.Comment.Trim();
+            report.FeedbackUpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                rating = report.FeedbackRating,
+                comment = report.FeedbackComment,
+                updatedAt = report.FeedbackUpdatedAt
+            });
+        }
+
         // endpoint looks at logged-in user, checks if they are a supervisor
         // retuns reports linked to the Issue assigned to them
         [Authorize(Roles = "Supervisor")]

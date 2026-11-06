@@ -34,6 +34,10 @@ namespace MunicipalReportingAPI.Data
                 .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<Report>()
+                .Property(r => r.FeedbackComment)
+                .HasMaxLength(1000);
+
+            modelBuilder.Entity<Report>()
                 .HasOne(r => r.Issue)
                 .WithMany(i => i.Reports)
                 .HasForeignKey(r => r.IssueId)

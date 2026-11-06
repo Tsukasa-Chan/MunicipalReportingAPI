@@ -24,6 +24,10 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   final scrollController = ScrollController();
+  final Set<int> _savingFeedback = {};
+  List<ReportRequest> _serverReports = [];
+  bool _reportsLoading = true;
+  String? _reportsError;
   bool _deleting = false;
 
   static const _orange = Color(0xFFC94F1B);
@@ -35,7 +39,54 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _reloadProfile();
+    _loadMyReports();
   }
+
+  Future<void> _loadMyReports() async {
+    if (mounted) {
+      setState(() {
+        _reportsLoading = true;
+        _reportsError = null;
+      });
+    }
+
+    try {
+      final response = await AuthStore.withAccessToken(
+        (api, token) => api.getMyReports(accessToken: token),
+      );
+      final reports = response.map(ReportRequest.fromApiJson).toList()
+        ..sort((first, second) => second.createdAt.compareTo(first.createdAt));
+      if (mounted) {
+        setState(() {
+          _serverReports = reports;
+          _reportsLoading = false;
+        });
+      }
+    } on AuthApiException catch (error) {
+      if (error.isSessionExpired && mounted) {
+        _goToStart();
+      } else if (mounted) {
+        setState(() {
+          _reportsError = error.message;
+          _reportsLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _reportsError =
+              'Could not load reports from the server. Check your connection and try again.';
+          _reportsLoading = false;
+        });
+      }
+    }
+  }
+
+  List<ReportRequest> get _pendingLocalReports =>
+      ReportStore.reportsForCurrentUser()
+          .where((report) => !report.isSubmitted)
+          .toList()
+        ..sort((first, second) => second.createdAt.compareTo(first.createdAt));
 
   Future<void> _reloadProfile() async {
     try {
@@ -75,7 +126,7 @@ class _ProfilePageState extends State<ProfilePage> {
       context,
       MaterialPageRoute(builder: (_) => ReportingPage(reportToEdit: report)),
     );
-    if (mounted) setState(() {});
+    if (mounted) await _loadMyReports();
   }
 
   Future<void> _deleteReport(ReportRequest report) async {
@@ -114,7 +165,11 @@ class _ProfilePageState extends State<ProfilePage> {
       );
       await ReportStore.removeReport(report);
       if (mounted) {
-        setState(() {});
+        setState(() {
+          _serverReports.removeWhere(
+            (savedReport) => savedReport.backendId == backendId,
+          );
+        });
         _message('Report deleted successfully.');
       }
     } on AuthApiException catch (error) {
@@ -136,46 +191,46 @@ class _ProfilePageState extends State<ProfilePage> {
 
       pdf.addPage(
         pw.MultiPage(
-            pageFormat: PdfPageFormat.a4,
-            build: (context) => [
+          pageFormat: PdfPageFormat.a4,
+          build: (context) => [
             pw.Padding(
-            padding: const pw.EdgeInsets.all(30),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text(
-                  'Municipal Reporting App',
-                  style: pw.TextStyle(
-                    fontSize: 22,
-                    fontWeight: pw.FontWeight.bold,
+              padding: const pw.EdgeInsets.all(30),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    'Municipal Reporting App',
+                    style: pw.TextStyle(
+                      fontSize: 22,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
                   ),
-                ),
-                pw.SizedBox(height: 10),
-                pw.Text(
-                  'Report #${report.backendId ?? report.id}',
-                  style: pw.TextStyle(
-                    fontSize: 18,
-                    fontWeight: pw.FontWeight.bold,
+                  pw.SizedBox(height: 10),
+                  pw.Text(
+                    'Report #${report.backendId ?? report.id}',
+                    style: pw.TextStyle(
+                      fontSize: 18,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
                   ),
-                ),
-                pw.Divider(),
-                pw.SizedBox(height: 10),
-                pw.Text('Status: ${report.status}'),
-                pw.SizedBox(height: 10),
-                pw.Text('Date Submitted: ${report.createdAt.toLocal()}'),
-                pw.SizedBox(height: 10),
-                pw.Text('Category: ${report.issueType}'),
-                pw.SizedBox(height: 10),
-                pw.Text('Specific Issue: ${report.issue}'),
-                pw.SizedBox(height: 10),
-                pw.Text('Location: ${report.locationAddress}'),
-                pw.SizedBox(height: 10),
-                pw.Text(
-                  'Additional Information: '
-                      '${report.description.isEmpty ? 'None' : report.description}',
-                ),
-              ],
-            ),
+                  pw.Divider(),
+                  pw.SizedBox(height: 10),
+                  pw.Text('Status: ${report.status}'),
+                  pw.SizedBox(height: 10),
+                  pw.Text('Date Submitted: ${report.createdAt.toLocal()}'),
+                  pw.SizedBox(height: 10),
+                  pw.Text('Category: ${report.issueType}'),
+                  pw.SizedBox(height: 10),
+                  pw.Text('Specific Issue: ${report.issue}'),
+                  pw.SizedBox(height: 10),
+                  pw.Text('Location: ${report.locationAddress}'),
+                  pw.SizedBox(height: 10),
+                  pw.Text(
+                    'Additional Information: '
+                    '${report.description.isEmpty ? 'None' : report.description}',
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -199,10 +254,134 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> _editResolutionFeedback(ReportRequest report) async {
+    final reportId = report.backendId;
+    if (reportId == null || report.status.toLowerCase() != 'resolved') return;
+
+    var rating = report.feedbackRating ?? 0;
+    final commentController = TextEditingController(
+      text: report.feedbackComment,
+    );
+    final feedback = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(
+            report.feedbackRating == null
+                ? 'How did we do?'
+                : 'Edit your feedback',
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('How satisfied are you with the resolution?'),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    5,
+                    (index) => IconButton(
+                      tooltip: '${index + 1} star${index == 0 ? '' : 's'}',
+                      onPressed: () => setDialogState(() => rating = index + 1),
+                      icon: Icon(
+                        index < rating ? Icons.star : Icons.star_border,
+                        color: _orange,
+                        size: 32,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: commentController,
+                  maxLength: 1000,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Comment (optional)',
+                    alignLabelWithHint: true,
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: rating == 0
+                  ? null
+                  : () => Navigator.pop(dialogContext, {
+                      'rating': rating,
+                      'comment': commentController.text.trim(),
+                    }),
+              child: Text(
+                report.feedbackRating == null ? 'Submit' : 'Save feedback',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    commentController.dispose();
+    if (feedback == null || !mounted || _savingFeedback.contains(report.id)) {
+      return;
+    }
+
+    setState(() => _savingFeedback.add(report.id));
+    try {
+      final result = await AuthStore.withAccessToken(
+        (api, token) => api.submitReportFeedback(
+          accessToken: token,
+          reportId: reportId,
+          rating: feedback['rating'] as int,
+          comment: feedback['comment'] as String,
+        ),
+      );
+      final savedRating = result['rating'];
+      if (savedRating is! num) {
+        throw const AuthApiException(
+          'The server did not confirm the saved feedback.',
+        );
+      }
+      final savedComment = result['comment'];
+      if (savedComment != null && savedComment is! String) {
+        throw const AuthApiException(
+          'The server returned invalid feedback data.',
+        );
+      }
+      final updatedAt = DateTime.tryParse(
+        result['updatedAt']?.toString() ?? '',
+      )?.toLocal();
+
+      await ReportStore.updateResolutionFeedback(
+        report: report,
+        rating: savedRating.toInt(),
+        comment: savedComment as String? ?? '',
+        updatedAt: updatedAt,
+      );
+      if (mounted) _message('Your resolution feedback was saved.');
+    } on AuthApiException catch (error) {
+      if (error.isSessionExpired && mounted) {
+        _goToStart();
+      } else {
+        _message(error.message);
+      }
+    } catch (_) {
+      _message('Could not save your feedback. Please check your connection.');
+    } finally {
+      if (mounted) setState(() => _savingFeedback.remove(report.id));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = AuthStore.currentUser;
-    final reports = ReportStore.reportsForCurrentUser();
+    final pendingReports = _pendingLocalReports;
     final isSupervisor = user?.isStaff == true;
     final primary = pagePrimaryColor(isSupervisor: isSupervisor);
 
@@ -362,9 +541,59 @@ class _ProfilePageState extends State<ProfilePage> {
                   ],
                 ),
                 const SizedBox(height: 32),
-                const _SectionHeading(title: 'Your Recent Reports'),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: _SectionHeading(title: 'Your Recent Reports'),
+                    ),
+                    IconButton(
+                      tooltip: 'Refresh reports',
+                      onPressed: _reportsLoading ? null : _loadMyReports,
+                      icon: _reportsLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.refresh, color: _orange),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 14),
-                if (reports.isEmpty)
+                if (_reportsError != null)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: _cardDecoration(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _reportsError!,
+                          style: const TextStyle(
+                            color: _secondaryText,
+                            height: 1.4,
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: _reportsLoading ? null : _loadMyReports,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Try again'),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (_reportsLoading && _serverReports.isEmpty)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: CircularProgressIndicator(color: _orange),
+                    ),
+                  ),
+                if (!_reportsLoading &&
+                    _reportsError == null &&
+                    _serverReports.isEmpty &&
+                    pendingReports.isEmpty)
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(
@@ -391,9 +620,33 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                       ],
                     ),
-                  )
-                else
-                  ...reports.map(_reportCard),
+                  ),
+                if (_serverReports.isNotEmpty) ...[
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 10),
+                    child: Text(
+                      'Submitted reports',
+                      style: TextStyle(
+                        color: _secondaryText,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  ..._serverReports.map(_reportCard),
+                ],
+                if (pendingReports.isNotEmpty) ...[
+                  const Padding(
+                    padding: EdgeInsets.only(top: 14, bottom: 10),
+                    child: Text(
+                      'Waiting to sync from this device',
+                      style: TextStyle(
+                        color: _secondaryText,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  ...pendingReports.map(_reportCard),
+                ],
                 const SizedBox(height: 24),
               ],
             ),
@@ -491,6 +744,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 report.description.isEmpty ? 'None' : report.description,
               ),
               _reportDetail('Sync', report.syncStatus),
+              const SizedBox(height: 16),
+              _resolutionFeedbackCard(report),
               const SizedBox(height: 20),
               Row(
                 children: [
@@ -535,7 +790,9 @@ class _ProfilePageState extends State<ProfilePage> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: _deleting ? null : () => _downloadReportPdf(report),
+                  onPressed: _deleting
+                      ? null
+                      : () => _downloadReportPdf(report),
                   icon: const Icon(Icons.download, size: 18),
                   label: const Text('Download PDF'),
                   style: ElevatedButton.styleFrom(
@@ -559,6 +816,109 @@ class _ProfilePageState extends State<ProfilePage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _resolutionFeedbackCard(ReportRequest report) {
+    final isResolved = report.status.toLowerCase() == 'resolved';
+    final hasServerReport = report.backendId != null;
+    if (!isResolved || !hasServerReport) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF8F4),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          isResolved
+              ? 'Feedback is available after this report syncs with the server.'
+              : 'You can leave feedback after this report is resolved.',
+          style: const TextStyle(color: _secondaryText, height: 1.4),
+        ),
+      );
+    }
+
+    final isSaving = _savingFeedback.contains(report.id);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF8F4),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'How did we do?',
+            style: TextStyle(
+              color: _darkText,
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          if (report.feedbackRating != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                ...List.generate(
+                  5,
+                  (index) => Icon(
+                    index < report.feedbackRating!
+                        ? Icons.star
+                        : Icons.star_border,
+                    color: _orange,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${report.feedbackRating}/5',
+                  style: const TextStyle(
+                    color: _darkText,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            if (report.feedbackComment.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                report.feedbackComment,
+                style: const TextStyle(color: _secondaryText, height: 1.4),
+              ),
+            ],
+          ] else ...[
+            const SizedBox(height: 6),
+            const Text(
+              'How was the resolution? Rate it and optionally leave a comment.',
+              style: TextStyle(color: _secondaryText, height: 1.4),
+            ),
+          ],
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: isSaving ? null : () => _editResolutionFeedback(report),
+            icon: isSaving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(
+                    report.feedbackRating == null
+                        ? Icons.star_outline
+                        : Icons.edit_outlined,
+                  ),
+            label: Text(
+              report.feedbackRating == null
+                  ? 'Leave feedback'
+                  : 'Edit feedback',
+            ),
+          ),
+        ],
       ),
     );
   }

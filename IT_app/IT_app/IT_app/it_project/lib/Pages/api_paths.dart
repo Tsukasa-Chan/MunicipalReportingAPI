@@ -11,6 +11,7 @@ class ApiPaths {
   // endpoints for the chatbot and reports.
   static const chat = '/api/Chat';
   static const reports = '/api/Reports';
+  static const myReports = '/api/Reports/mine';
 
   // endpoints for supervisor tasks and report details.
   static const assignReportToSupervisorTemplate =
@@ -21,6 +22,13 @@ class ApiPaths {
       '/api/supervisors/{supervisorUsername}/schedule';
   static const reportStatusTemplate = '/api/reports/{reportId}/status';
   static const reportInvoiceTemplate = '/api/reports/{reportId}/invoice';
+
+  static String reportFeedback(int reportId) {
+    if (reportId <= 0) {
+      throw ArgumentError.value(reportId, 'reportId', 'Must be positive.');
+    }
+    return '/api/Reports/$reportId/feedback';
+  }
 
   // creates the assignment endpoint.
   static String assignReportToSupervisor(int reportId) {

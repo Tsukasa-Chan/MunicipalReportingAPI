@@ -31,6 +31,9 @@ namespace MunicipalReportingAPI.DTO
         public double Latitude { get; set; }
         public double Longitude { get; set; }
         public string? Description { get; set; }
+        public int? FeedbackRating { get; set; }
+        public string? FeedbackComment { get; set; }
+        public DateTime? FeedbackUpdatedAt { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
 
@@ -71,6 +74,9 @@ namespace MunicipalReportingAPI.DTO
             Latitude = r.Latitude,
             Longitude = r.Longitude,
             Description = r.Description,
+            FeedbackRating = r.FeedbackRating,
+            FeedbackComment = r.FeedbackComment,
+            FeedbackUpdatedAt = r.FeedbackUpdatedAt,
             CreatedAt = r.CreatedAt,
             UpdatedAt = r.UpdatedAt,
             UserId = r.UserId,
