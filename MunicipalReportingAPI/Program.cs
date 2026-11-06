@@ -106,6 +106,12 @@ builder.Services.Configure<MunicipalReportingAPI.Options.IssueGroupingOptions>(
     builder.Configuration.GetSection(MunicipalReportingAPI.Options.IssueGroupingOptions.SectionName));
 builder.Services.AddScoped<IIssueService, IssueService>();
 
+// Restricted Fix My City help chatbot
+builder.Services.AddScoped<ChatService>();
+// Gemini is only an intent classifier; its HttpClient has a short timeout.
+builder.Services.AddHttpClient<AiIntentService>(client =>
+    client.Timeout = TimeSpan.FromSeconds(8));
+
 // CORS
 builder.Services.AddCors(options =>
 {

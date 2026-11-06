@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'auth_api.dart';
 import 'auth_store.dart';
 import 'email_verification.dart';
+import 'legal_documents.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({this.authApi, super.key});
@@ -308,6 +309,53 @@ class _RegisterPageState extends State<RegisterPage> {
 
                     const SizedBox(height: 26),
 
+                    FormField<bool>(
+                      initialValue: false,
+                      validator: (accepted) => accepted == true
+                          ? null
+                          : 'Please accept the Terms & Conditions to continue.',
+                      builder: (field) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CheckboxListTile(
+                            value: field.value ?? false,
+                            onChanged: _isRegistering ? null : field.didChange,
+                            contentPadding: EdgeInsets.zero,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            activeColor: const Color(0xFFC94F1B),
+                            title: const Text(
+                              'I have read and agree to the Terms & Conditions.',
+                              style: TextStyle(
+                                color: Color(0xFF292524),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () => _showTermsDialog(context),
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFFC94F1B),
+                              padding: EdgeInsets.zero,
+                            ),
+                            child: const Text('Read Terms & Conditions'),
+                          ),
+                          if (field.errorText != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                field.errorText!,
+                                style: const TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
                     ElevatedButton(
                       onPressed: _isRegistering ? null : _register,
                       style: ElevatedButton.styleFrom(
@@ -374,6 +422,90 @@ class _RegisterPageState extends State<RegisterPage> {
             fit: BoxFit.cover,
           ),
         ),
+      ),
+    );
+  }
+
+  void _showTermsDialog(BuildContext context) {
+    final messenger = ScaffoldMessenger.of(context);
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFFE8C7B8)),
+        ),
+        title: const Text(
+          termsTitle,
+          style: TextStyle(
+            color: Color(0xFF292524),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF8F4),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: SingleChildScrollView(
+              child: Text(
+                termsText,
+                style: const TextStyle(
+                  color: Color(0xFF78716C),
+                  fontSize: 15,
+                  height: 1.5,
+                ),
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton.icon(
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFC94F1B),
+            ),
+            icon: const Icon(Icons.download),
+            label: const Text('Download'),
+            onPressed: () async {
+              try {
+                final savedPath = await downloadPdfFile(
+                  termsFileName,
+                  termsTitle,
+                  termsText,
+                );
+                if (!messenger.mounted) return;
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      savedPath == null || savedPath.isEmpty
+                          ? '$termsTitle downloaded.'
+                          : '$termsTitle saved.',
+                    ),
+                  ),
+                );
+              } catch (_) {
+                if (!messenger.mounted) return;
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Could not download the file.'),
+                  ),
+                );
+              }
+            },
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFC94F1B),
+            ),
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
+          ),
+        ],
       ),
     );
   }
