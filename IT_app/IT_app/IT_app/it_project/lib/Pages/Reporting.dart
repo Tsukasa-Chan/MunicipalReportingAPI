@@ -492,8 +492,14 @@ class _ReportingPageState extends State<ReportingPage> {
           (response['report'] is Map ? response['report']['id'] : null);
       final serverId = rawServerId is num
           ? rawServerId.toInt() : int.tryParse(rawServerId?.toString() ?? '');
+      final rawIssueId = response['issueId'];
+      final issueId = rawIssueId is num
+          ? rawIssueId.toInt()
+          : int.tryParse(rawIssueId?.toString() ?? '');
       final report = ReportStore.addReport(
         backendId: serverId,
+        issueId: issueId,
+        status: response['status']?.toString() ?? 'Reported',
         areaId: areaId,
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,

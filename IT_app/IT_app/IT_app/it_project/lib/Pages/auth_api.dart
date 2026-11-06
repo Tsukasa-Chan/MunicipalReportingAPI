@@ -180,6 +180,65 @@ class AuthApi {
     return _decodeJsonObject(response);
   }
 
+  // Loads the current status and assignment timestamps for a municipal issue.
+  Future<Map<String, dynamic>> getIssueDetails({
+    required int issueId,
+    required String accessToken,
+  }) async {
+    if (issueId <= 0) {
+      throw ArgumentError.value(issueId, 'issueId', 'Must be positive.');
+    }
+
+    final response = await _send(
+      () => _client.get(
+        _endpoint('/api/Issues/$issueId'),
+        headers: _headers(accessToken: accessToken),
+      ),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _exceptionFromResponse(response);
+    }
+
+    return _decodeJsonObject(response);
+  }
+
+  // Loads reports submitted by the authenticated resident.
+  Future<List<Map<String, dynamic>>> getMyReports({
+    required String accessToken,
+  }) async {
+    final response = await _send(
+      () => _client.get(
+        _endpoint(ApiPaths.myReports),
+        headers: _headers(accessToken: accessToken),
+      ),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _exceptionFromResponse(response);
+    }
+
+    final body = response.body.trim();
+    if (body.isEmpty) return const [];
+
+    final decoded = jsonDecode(body);
+    if (decoded is! List) {
+      throw const AuthApiException(
+        'The server returned an unexpected reports response.',
+      );
+    }
+
+    if (decoded.any((item) => item is! Map)) {
+      throw const AuthApiException(
+        'The server returned an invalid report in the reports list.',
+      );
+    }
+
+    return decoded
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList(growable: false);
+  }
+
   // CREATE REPORT
   // Backend: POST /api/Reports
   // Uses multipart form data because the backend accepts an optional image.

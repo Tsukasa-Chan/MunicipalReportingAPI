@@ -24,6 +24,11 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   final scrollController = ScrollController();
+  final Set<int> _refreshingReportStatus = {};
+  final Map<int, String> _reportStatusErrors = {};
+  List<ReportRequest> _serverReports = [];
+  bool _reportsLoading = true;
+  String? _reportsError;
   bool _deleting = false;
 
   static const _orange = Color(0xFFC94F1B);
@@ -35,7 +40,56 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _reloadProfile();
+    _loadMyReports();
   }
+
+  Future<void> _loadMyReports() async {
+    if (mounted) {
+      setState(() {
+        _reportsLoading = true;
+        _reportsError = null;
+      });
+    }
+
+    try {
+      final response = await AuthStore.withAccessToken(
+        (api, token) => api.getMyReports(accessToken: token),
+      );
+      final reports = response
+          .map(ReportRequest.fromApiJson)
+          .toList()
+        ..sort((first, second) => second.createdAt.compareTo(first.createdAt));
+      if (mounted) {
+        setState(() {
+          _serverReports = reports;
+          _reportsLoading = false;
+        });
+      }
+    } on AuthApiException catch (error) {
+      if (error.isSessionExpired && mounted) {
+        _goToStart();
+      } else if (mounted) {
+        setState(() {
+          _reportsError = error.message;
+          _reportsLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _reportsError =
+              'Could not load reports from the server. Check your connection and try again.';
+          _reportsLoading = false;
+        });
+      }
+    }
+  }
+
+  List<ReportRequest> get _pendingLocalReports =>
+      ReportStore.reportsForCurrentUser()
+          .where((report) => !report.isSubmitted)
+          .toList()
+        ..sort((first, second) => second.createdAt.compareTo(first.createdAt));
 
   Future<void> _reloadProfile() async {
     try {
@@ -61,6 +115,246 @@ class _ProfilePageState extends State<ProfilePage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(value)));
   }
 
+  Future<void> _refreshReportStatus(ReportRequest report) async {
+    final issueId = report.issueId;
+    if (issueId == null ||
+        !report.isSubmitted ||
+        _refreshingReportStatus.contains(report.id)) {
+      return;
+    }
+
+    setState(() {
+      _refreshingReportStatus.add(report.id);
+      _reportStatusErrors.remove(report.id);
+    });
+
+    try {
+      final issue = await AuthStore.withAccessToken(
+        (api, token) => api.getIssueDetails(
+          issueId: issueId,
+          accessToken: token,
+        ),
+      );
+      final status = issue['status']?.toString().trim() ?? '';
+      if (status.isEmpty) {
+        throw const AuthApiException(
+          'The server did not return a status for this issue.',
+        );
+      }
+
+      await ReportStore.updateIssueDetails(
+        report: report,
+        status: status,
+        scheduledAt: DateTime.tryParse(
+          issue['scheduledAt']?.toString() ?? '',
+        )?.toLocal(),
+        updatedAt: DateTime.tryParse(
+          issue['updatedAt']?.toString() ?? '',
+        )?.toLocal(),
+      );
+    } on AuthApiException catch (error) {
+      if (error.isSessionExpired && mounted) {
+        _goToStart();
+      } else if (mounted) {
+        setState(() => _reportStatusErrors[report.id] = error.message);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _reportStatusErrors[report.id] =
+              'Could not refresh this report status. Check your connection and try again.';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _refreshingReportStatus.remove(report.id));
+      }
+    }
+  }
+
+  String _statusLabel(String status) => switch (status) {
+    'Reported' => 'Reported',
+    'InProgress' => 'In progress',
+    'Resolved' => 'Resolved',
+    'Pending' => 'Pending',
+    _ => status.replaceAllMapped(
+      RegExp(r'([a-z])([A-Z])'),
+      (match) => '${match[1]} ${match[2]}',
+    ),
+  };
+
+  String _timelineDate(DateTime? date) {
+    if (date == null) return 'Date unavailable';
+    final local = date.toLocal();
+    final localizations = MaterialLocalizations.of(context);
+    return '${localizations.formatMediumDate(local)} · '
+        '${localizations.formatTimeOfDay(TimeOfDay.fromDateTime(local))}';
+  }
+
+  Widget _reportTimeline(ReportRequest report) {
+    final entries = <(String, String, IconData)>[
+      (
+        report.isSubmitted ? 'Report submitted' : 'Saved on this device',
+        report.isSubmitted
+            ? _timelineDate(report.submittedAt)
+            : '${_timelineDate(report.createdAt)} · Waiting to sync',
+        report.isSubmitted ? Icons.outgoing_mail : Icons.save_outlined,
+      ),
+    ];
+
+    if (report.scheduledAt != null) {
+      entries.add((
+        'Assigned to municipal team',
+        _timelineDate(report.scheduledAt),
+        Icons.assignment_ind_outlined,
+      ));
+    }
+
+    entries.add((
+      'Current status: ${_statusLabel(report.status)}',
+      report.updatedAt == null
+          ? 'Latest status'
+          : 'Last updated ${_timelineDate(report.updatedAt)}',
+      report.status == 'Resolved' ? Icons.check_circle_outline : Icons.update,
+    ));
+
+    final canRefresh = report.issueId != null && report.isSubmitted;
+    final isRefreshing = _refreshingReportStatus.contains(report.id);
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 18),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF8F4),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Report timeline',
+                  style: TextStyle(
+                    color: _darkText,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              if (canRefresh)
+                IconButton(
+                  tooltip: 'Refresh status',
+                  onPressed: isRefreshing
+                      ? null
+                      : () => _refreshReportStatus(report),
+                  icon: isRefreshing
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh, color: _orange),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          for (var index = 0; index < entries.length; index++)
+            _timelineStep(
+              title: entries[index].$1,
+              subtitle: entries[index].$2,
+              icon: entries[index].$3,
+              isLast: index == entries.length - 1,
+            ),
+          if (!canRefresh)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text(
+                'Live status is unavailable for this saved report.',
+                style: TextStyle(fontSize: 12, color: _secondaryText),
+              ),
+            ),
+          if (_reportStatusErrors[report.id] case final error?)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                error,
+                style: const TextStyle(fontSize: 12, color: Colors.red),
+              ),
+            ),
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Text(
+              'This shows the latest status; past status changes are not available.',
+              style: TextStyle(fontSize: 12, color: _secondaryText),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _timelineStep({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool isLast,
+  }) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 28,
+            child: Column(
+              children: [
+                Icon(icon, size: 20, color: _orange),
+                if (!isLast)
+                  Expanded(
+                    child: Container(
+                      width: 2,
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      color: _borderColor,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: _darkText,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: _secondaryText,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _editReport(ReportRequest report) async {
     if (report.backendId == null ||
         report.areaId == null ||
@@ -75,7 +369,7 @@ class _ProfilePageState extends State<ProfilePage> {
       context,
       MaterialPageRoute(builder: (_) => ReportingPage(reportToEdit: report)),
     );
-    if (mounted) setState(() {});
+    if (mounted) await _loadMyReports();
   }
 
   Future<void> _deleteReport(ReportRequest report) async {
@@ -114,7 +408,11 @@ class _ProfilePageState extends State<ProfilePage> {
       );
       await ReportStore.removeReport(report);
       if (mounted) {
-        setState(() {});
+        setState(() {
+          _serverReports.removeWhere(
+            (savedReport) => savedReport.backendId == backendId,
+          );
+        });
         _message('Report deleted successfully.');
       }
     } on AuthApiException catch (error) {
@@ -202,7 +500,7 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final user = AuthStore.currentUser;
-    final reports = ReportStore.reportsForCurrentUser();
+    final pendingReports = _pendingLocalReports;
     final isSupervisor = user?.isStaff == true;
     final primary = pagePrimaryColor(isSupervisor: isSupervisor);
 
@@ -362,9 +660,59 @@ class _ProfilePageState extends State<ProfilePage> {
                   ],
                 ),
                 const SizedBox(height: 32),
-                const _SectionHeading(title: 'Your Recent Reports'),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: _SectionHeading(title: 'Your Recent Reports'),
+                    ),
+                    IconButton(
+                      tooltip: 'Refresh reports',
+                      onPressed: _reportsLoading ? null : _loadMyReports,
+                      icon: _reportsLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.refresh, color: _orange),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 14),
-                if (reports.isEmpty)
+                if (_reportsError != null)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: _cardDecoration(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _reportsError!,
+                          style: const TextStyle(
+                            color: _secondaryText,
+                            height: 1.4,
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: _reportsLoading ? null : _loadMyReports,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Try again'),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (_reportsLoading && _serverReports.isEmpty)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: CircularProgressIndicator(color: _orange),
+                    ),
+                  ),
+                if (!_reportsLoading &&
+                    _reportsError == null &&
+                    _serverReports.isEmpty &&
+                    pendingReports.isEmpty)
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(
@@ -391,9 +739,33 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                       ],
                     ),
-                  )
-                else
-                  ...reports.map(_reportCard),
+                  ),
+                if (_serverReports.isNotEmpty) ...[
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 10),
+                    child: Text(
+                      'Submitted reports',
+                      style: TextStyle(
+                        color: _secondaryText,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  ..._serverReports.map(_reportCard),
+                ],
+                if (pendingReports.isNotEmpty) ...[
+                  const Padding(
+                    padding: EdgeInsets.only(top: 14, bottom: 10),
+                    child: Text(
+                      'Waiting to sync from this device',
+                      style: TextStyle(
+                        color: _secondaryText,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  ...pendingReports.map(_reportCard),
+                ],
                 const SizedBox(height: 24),
               ],
             ),
@@ -463,6 +835,9 @@ class _ProfilePageState extends State<ProfilePage> {
         child: Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(
+            onExpansionChanged: (expanded) {
+              if (expanded) _refreshReportStatus(report);
+            },
             iconColor: _orange,
             collapsedIconColor: _orange,
             tilePadding: const EdgeInsets.symmetric(
@@ -479,11 +854,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
             children: [
-              _reportDetail('Status', report.status),
-              _reportDetail(
-                'Date Submitted',
-                report.createdAt.toLocal().toString().split('.').first,
-              ),
+              _reportTimeline(report),
               _reportDetail('Specific Issue', report.issue),
               _reportDetail('Location', report.locationAddress),
               _reportDetail(
