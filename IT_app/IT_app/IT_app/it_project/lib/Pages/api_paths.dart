@@ -11,6 +11,7 @@ class ApiPaths {
   // endpoints for the chatbot and reports.
   static const chat = '/api/Chat';
   static const reports = '/api/Reports';
+  static const myReports = '/api/Reports/mine';
 
   // endpoints for supervisor tasks and report details.
   static const assignReportToSupervisorTemplate =

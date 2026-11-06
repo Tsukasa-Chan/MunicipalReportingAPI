@@ -181,6 +181,64 @@ class ReportRequest {
     workerSignature: json['workerSignature'] as String? ?? '',
     storageType: json['storageType'] as String? ?? 'online',
   );
+
+  factory ReportRequest.fromApiJson(Map<String, dynamic> json) {
+    final backendId = (json['id'] as num?)?.toInt();
+    if (backendId == null || backendId <= 0) {
+      throw const FormatException('Report response has no valid ID.');
+    }
+
+    final createdAt = _parseServerDate(json['createdAt']);
+    if (createdAt == null) {
+      throw const FormatException('Report response has no valid creation date.');
+    }
+    final areaName = _apiString(json['areaName']);
+    final wardName = _apiString(json['wardName']);
+    final area = [
+      if (wardName.isNotEmpty) wardName,
+      if (areaName.isNotEmpty) areaName,
+    ].join(' - ');
+
+    return ReportRequest(
+      id: -backendId,
+      backendId: backendId,
+      issueId: (json['issueId'] as num?)?.toInt(),
+      updatedAt: _parseServerDate(json['updatedAt']),
+      areaId: (json['areaId'] as num?)?.toInt(),
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      senderName: _apiString(json['userFullName']),
+      issueType: _humanizeApiName(_apiString(json['issueCategory'])),
+      issue: _humanizeApiName(_apiString(json['issueType'])),
+      area: area.isEmpty ? 'Area unavailable' : area,
+      createdAt: createdAt,
+      queuedAt: createdAt,
+      submittedAt: createdAt,
+      syncStatus: 'Synced',
+      description: _apiString(json['description']),
+      status: _apiString(json['status']).isEmpty
+          ? 'Reported'
+          : _apiString(json['status']),
+      locationAddress: _apiString(json['location']),
+      storageType: 'online',
+    );
+  }
+
+  static String _apiString(Object? value) => value?.toString().trim() ?? '';
+
+  static DateTime? _parseServerDate(Object? value) {
+    final text = _apiString(value);
+    if (text.isEmpty) return null;
+    final hasZone = RegExp(r'(Z|[+-]\d{2}:?\d{2})$').hasMatch(text);
+    return DateTime.tryParse(hasZone ? text : '${text}Z')?.toLocal();
+  }
+
+  static String _humanizeApiName(String value) => value
+      .replaceAllMapped(
+        RegExp(r'([a-z])([A-Z])'),
+        (match) => '${match[1]} ${match[2]}',
+      )
+      .trim();
 }
 
 class ReportGroup {
@@ -498,12 +556,10 @@ class ReportStore {
     DateTime? scheduledAt,
     DateTime? updatedAt,
   }) async {
-    if (!_reports.contains(report)) return;
-
     report.status = status;
     report.scheduledAt = scheduledAt;
     report.updatedAt = updatedAt;
-    await _save();
+    if (_reports.contains(report)) await _save();
   }
 
   static List<ReportRequest> get pendingSyncReports => List.unmodifiable(

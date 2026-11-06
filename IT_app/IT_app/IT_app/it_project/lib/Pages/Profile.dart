@@ -26,6 +26,9 @@ class _ProfilePageState extends State<ProfilePage> {
   final scrollController = ScrollController();
   final Set<int> _refreshingReportStatus = {};
   final Map<int, String> _reportStatusErrors = {};
+  List<ReportRequest> _serverReports = [];
+  bool _reportsLoading = true;
+  String? _reportsError;
   bool _deleting = false;
 
   static const _orange = Color(0xFFC94F1B);
@@ -37,7 +40,56 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _reloadProfile();
+    _loadMyReports();
   }
+
+  Future<void> _loadMyReports() async {
+    if (mounted) {
+      setState(() {
+        _reportsLoading = true;
+        _reportsError = null;
+      });
+    }
+
+    try {
+      final response = await AuthStore.withAccessToken(
+        (api, token) => api.getMyReports(accessToken: token),
+      );
+      final reports = response
+          .map(ReportRequest.fromApiJson)
+          .toList()
+        ..sort((first, second) => second.createdAt.compareTo(first.createdAt));
+      if (mounted) {
+        setState(() {
+          _serverReports = reports;
+          _reportsLoading = false;
+        });
+      }
+    } on AuthApiException catch (error) {
+      if (error.isSessionExpired && mounted) {
+        _goToStart();
+      } else if (mounted) {
+        setState(() {
+          _reportsError = error.message;
+          _reportsLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _reportsError =
+              'Could not load reports from the server. Check your connection and try again.';
+          _reportsLoading = false;
+        });
+      }
+    }
+  }
+
+  List<ReportRequest> get _pendingLocalReports =>
+      ReportStore.reportsForCurrentUser()
+          .where((report) => !report.isSubmitted)
+          .toList()
+        ..sort((first, second) => second.createdAt.compareTo(first.createdAt));
 
   Future<void> _reloadProfile() async {
     try {
@@ -317,7 +369,7 @@ class _ProfilePageState extends State<ProfilePage> {
       context,
       MaterialPageRoute(builder: (_) => ReportingPage(reportToEdit: report)),
     );
-    if (mounted) setState(() {});
+    if (mounted) await _loadMyReports();
   }
 
   Future<void> _deleteReport(ReportRequest report) async {
@@ -356,7 +408,11 @@ class _ProfilePageState extends State<ProfilePage> {
       );
       await ReportStore.removeReport(report);
       if (mounted) {
-        setState(() {});
+        setState(() {
+          _serverReports.removeWhere(
+            (savedReport) => savedReport.backendId == backendId,
+          );
+        });
         _message('Report deleted successfully.');
       }
     } on AuthApiException catch (error) {
@@ -444,7 +500,7 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final user = AuthStore.currentUser;
-    final reports = ReportStore.reportsForCurrentUser();
+    final pendingReports = _pendingLocalReports;
     final isSupervisor = user?.isStaff == true;
     final primary = pagePrimaryColor(isSupervisor: isSupervisor);
 
@@ -604,9 +660,59 @@ class _ProfilePageState extends State<ProfilePage> {
                   ],
                 ),
                 const SizedBox(height: 32),
-                const _SectionHeading(title: 'Your Recent Reports'),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: _SectionHeading(title: 'Your Recent Reports'),
+                    ),
+                    IconButton(
+                      tooltip: 'Refresh reports',
+                      onPressed: _reportsLoading ? null : _loadMyReports,
+                      icon: _reportsLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.refresh, color: _orange),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 14),
-                if (reports.isEmpty)
+                if (_reportsError != null)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: _cardDecoration(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _reportsError!,
+                          style: const TextStyle(
+                            color: _secondaryText,
+                            height: 1.4,
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: _reportsLoading ? null : _loadMyReports,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Try again'),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (_reportsLoading && _serverReports.isEmpty)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: CircularProgressIndicator(color: _orange),
+                    ),
+                  ),
+                if (!_reportsLoading &&
+                    _reportsError == null &&
+                    _serverReports.isEmpty &&
+                    pendingReports.isEmpty)
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(
@@ -633,9 +739,33 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                       ],
                     ),
-                  )
-                else
-                  ...reports.map(_reportCard),
+                  ),
+                if (_serverReports.isNotEmpty) ...[
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 10),
+                    child: Text(
+                      'Submitted reports',
+                      style: TextStyle(
+                        color: _secondaryText,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  ..._serverReports.map(_reportCard),
+                ],
+                if (pendingReports.isNotEmpty) ...[
+                  const Padding(
+                    padding: EdgeInsets.only(top: 14, bottom: 10),
+                    child: Text(
+                      'Waiting to sync from this device',
+                      style: TextStyle(
+                        color: _secondaryText,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  ...pendingReports.map(_reportCard),
+                ],
                 const SizedBox(height: 24),
               ],
             ),
