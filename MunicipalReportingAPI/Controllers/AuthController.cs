@@ -87,9 +87,9 @@ namespace MunicipalReportingAPI.Controllers
 
                 await _emailService.SendEmailAsync(
                     user.Email,
-                    "Verify your Municipal Reporting account",
+                    "Verify your Fix My Area account",
                     $"""
-            <h2>Welcome to Municipal Reporting</h2>
+            <h2>Welcome to Fix My Area</h2>
 
             <p>Hi {user.FullName},</p>
 
@@ -183,7 +183,7 @@ namespace MunicipalReportingAPI.Controllers
 
             await _emailService.SendEmailAsync(
                 user.Email!,
-                "Verify your Municipal Reporting account",
+                "Verify your Fix My Area account",
                 $"""
                 <h2>Verify your email address</h2>
 
@@ -500,7 +500,7 @@ namespace MunicipalReportingAPI.Controllers
                 $"&token={Uri.EscapeDataString(token)}";
 
             await _emailService.SendEmailAsync(
-                user.Email,
+                user.Email!,
                 "Reset your password",
                 $"""
 
