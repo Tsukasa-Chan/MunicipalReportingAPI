@@ -1,0 +1,403 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+
+    <title>Recover Email Address - Fix My Area</title>
+
+    <style>
+        :root {
+            --bg: #fff4ee;
+            --card: #ffffff;
+            --text: #2b2b2b;
+            --muted: #6b6b6b;
+            --accent: #e8541a;
+            --border: #e2d6cf;
+            --ok: #2e8b3d;
+            --ok-bg: #e8f5e9;
+            --info: #e8541a;
+            --info-bg: #fff0e8;
+            --error: #c0392b;
+            --error-bg: #fdecea;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1e1a18;
+                --card: #2a2522;
+                --text: #f1ebe7;
+                --muted: #b5aaa3;
+                --border: #4a403b;
+                --ok: #7fd18b;
+                --ok-bg: #1f3a25;
+                --info: #ff9a6b;
+                --info-bg: #3d2a20;
+                --error: #ff8f84;
+                --error-bg: #4a2220;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 420px;
+            background: var(--card);
+            border-radius: 16px;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+            overflow: hidden;
+        }
+
+        .header {
+            background: var(--accent);
+            color: #ffffff;
+            padding: 20px 24px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .body {
+            padding: 32px 24px 28px;
+            text-align: center;
+        }
+
+        .icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+
+            .icon svg {
+                width: 38px;
+                height: 38px;
+                fill: none;
+                stroke: currentColor;
+                stroke-width: 3;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+            }
+
+            .icon.ok {
+                background: var(--ok-bg);
+                color: var(--ok);
+            }
+
+            .icon.info {
+                background: var(--info-bg);
+                color: var(--info);
+            }
+
+            .icon.error {
+                background: var(--error-bg);
+                color: var(--error);
+            }
+
+        h1 {
+            font-size: 22px;
+            margin: 0 0 10px;
+        }
+
+        p {
+            margin: 0 0 16px;
+            color: var(--muted);
+            font-size: 15px;
+            line-height: 1.55;
+        }
+
+        .steps {
+            text-align: left;
+            margin: 20px 0 4px;
+            padding: 16px 18px 16px 36px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        button {
+            border: 0;
+            background: var(--accent);
+            color: #ffffff;
+            font: inherit;
+            font-weight: 600;
+            padding: 13px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+            button:disabled {
+                opacity: 0.65;
+                cursor: wait;
+            }
+
+        .link {
+            color: var(--accent);
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="card">
+
+        <div class="header">
+            Fix My Area
+        </div>
+
+        <div class="body">
+
+            <!-- Recovery Confirmation -->
+            <div id="ready" hidden>
+
+                <div class="icon info">
+                    <svg viewBox="0 0 24 24">
+                        <line x1="12" y1="7" x2="12" y2="14"></line>
+                        <line x1="12" y1="18" x2="12" y2="18"></line>
+                    </svg>
+                </div>
+
+                <h1>Wasn't this you?</h1>
+
+                <p>
+                    If you did not change your email address,
+                    you can restore the previous address now.
+                    This will sign out existing sessions.
+                </p>
+
+                <p>
+                    <strong id="oldEmail"></strong>
+                </p>
+
+                <button type="button" id="restore">
+                    Restore my previous email
+                </button>
+
+            </div>
+
+            <!-- Loading -->
+            <div id="loading" hidden>
+
+                <h1>Restoring your address...</h1>
+
+                <p>
+                    Checking your secure recovery link.
+                </p>
+
+            </div>
+
+            <!-- Successful Recovery -->
+            <div id="success" hidden>
+
+                <div class="icon ok">
+                    <svg viewBox="0 0 24 24">
+                        <polyline points="5 12.5 10 17.5 19 7.5">
+                        </polyline>
+                    </svg>
+                </div>
+
+                <h1>Email Restored</h1>
+
+                <p>
+                    Your previous email address has been restored
+                    and existing sessions have been signed out.
+                </p>
+
+                <p>
+                    <strong>Reset your password immediately</strong>
+                    using Forgot Password in the Fix My Area app.
+                </p>
+
+            </div>
+
+            <!-- Invalid or Expired Recovery -->
+            <div id="invalid" hidden>
+
+                <div class="icon error">
+                    <svg viewBox="0 0 24 24">
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                    </svg>
+                </div>
+
+                <h1>Recovery Unavailable</h1>
+
+                <p id="errorText">
+                    This link is invalid, expired, or already used.
+                    Contact support if you did not make this change.
+                </p>
+
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+                        (function () {
+                            "use strict";
+
+                            // Read recovery information from the URL.
+                            var params = new URLSearchParams(
+                                window.location.search
+                            );
+
+                            var data = {
+                                userId: Number(params.get('userId')),
+                                oldEmail: params.get('oldEmail') || '',
+                                currentEmail: params.get('currentEmail') || '',
+                                token: params.get('token') || ''
+                            };
+
+                            // Remove sensitive information from the browser URL.
+                            window.history.replaceState(
+                                null,
+                                '',
+                                window.location.pathname
+                            );
+
+                            // Display only the selected section.
+                            // The parameter is explicitly documented as a string.
+
+                            var show = function (id = '') {
+
+                                ['ready', 'loading', 'success', 'invalid']
+                                    .forEach(function (name) {
+
+                                        var element =
+                                            document.getElementById(name);
+
+                                        if (element) {
+                                            element.hidden = name !== id;
+                                        }
+
+                                    });
+
+                            };
+
+                            // Validate the recovery information.
+                            if (
+                                !Number.isInteger(data.userId) ||
+                                data.userId <= 0 ||
+                                !data.oldEmail ||
+                                !data.currentEmail ||
+                                !data.token
+                            ) {
+                                show('invalid');
+                                return;
+                            }
+
+                            // Display the old email address.
+                            var oldEmailElement =
+                                document.getElementById('oldEmail');
+
+                            if (oldEmailElement) {
+                                oldEmailElement.textContent = data.oldEmail;
+                            }
+
+                            // Show recovery confirmation.
+                            show('ready');
+
+                            // Find the restore button.
+                            var restoreButton =
+                                document.getElementById('restore');
+
+                            if (restoreButton) {
+
+                                restoreButton.addEventListener(
+                                    'click',
+                                    async function () {
+
+                                        show('loading');
+
+                                        try {
+
+                                            // Send recovery request to the API.
+                                            var response = await fetch(
+                                                '/api/Users/recover-email-change',
+                                                {
+                                                    method: 'POST',
+                                                    headers: {
+                                                        'Content-Type': 'application/json'
+                                                    },
+                                                    body: JSON.stringify(data),
+                                                    credentials: 'omit'
+                                                }
+                                            );
+
+                                            if (response.ok) {
+
+                                                // Recovery was successful.
+                                                show('success');
+
+                                            } else {
+
+                                                // Read API error response.
+                                                var result = await response.json()
+                                                    .catch(function () {
+                                                        return null;
+                                                    });
+
+                                                var errorElement =
+                                                    document.getElementById(
+                                                        'errorText'
+                                                    );
+
+                                                if (errorElement) {
+                                                    errorElement.textContent =
+                                                        (result && result.message) ||
+                                                        'Recovery could not be completed. Please contact support.';
+                                                }
+
+                                                show('invalid');
+                                            }
+
+                                        } catch (e) {
+
+                                            // Handle connection errors.
+                                            var errorElement =
+                                                document.getElementById(
+                                                    'errorText'
+                                                );
+
+                                            if (errorElement) {
+                                                errorElement.textContent =
+                                                    'Unable to connect to the server. Please check your connection and reopen the email link.';
+                                            }
+
+                                            show('invalid');
+                                        }
+
+                                    }
+                                );
+
+                            }
+
+                        })();
+    </script>
+
+</body>
+</html>
