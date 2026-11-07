@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'ContactUs.dart';
 import 'Help.dart';
-import 'OtherReports.dart';
+import 'CommunityNotices.dart';
 import 'Profile.dart';
 import 'Reporting.dart';
 import 'Settings.dart';
@@ -280,7 +280,7 @@ class _HomePageState extends State<HomePage> {
           if (index == 0) {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const OtherReportsPage()),
+              MaterialPageRoute(builder: (_) => const CommunityNoticesPage()),
             );
           } else if (index == 1) {
             Navigator.push(
@@ -306,7 +306,7 @@ class _HomePageState extends State<HomePage> {
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.assignment),
-            label: 'View Complaints',
+            label: 'Community Notices',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.add), label: 'New Report'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),

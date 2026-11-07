@@ -10,6 +10,8 @@ namespace MunicipalReportingAPI.Data
         public MunicipalDBContext(DbContextOptions<MunicipalDBContext> options)
             : base(options) { }
 
+        public DbSet<CommunityNotice> CommunityNotices { get; set; }
+
         public DbSet<Report> Reports { get; set; }
 
         public DbSet<Issue> Issues { get; set; }
@@ -25,6 +27,22 @@ namespace MunicipalReportingAPI.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // Community notices: an Admin publishes to everyone, a ward, or one area.
+            modelBuilder.Entity<CommunityNotice>(e =>
+            {
+                e.Property(n => n.Title).IsRequired().HasMaxLength(150);
+                e.Property(n => n.Description).IsRequired().HasMaxLength(3000);
+                e.HasOne(n => n.Area).WithMany().HasForeignKey(n => n.AreaId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                e.HasOne(n => n.Ward).WithMany().HasForeignKey(n => n.WardId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                e.HasOne(n => n.CreatedByUser).WithMany().HasForeignKey(n => n.CreatedByUserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+                e.HasIndex(n => new { n.IsActive, n.Audience, n.CreatedAt });
+                e.HasIndex(n => n.AreaId);
+                e.HasIndex(n => n.WardId);
+            });
 
             modelBuilder.Entity<Report>()
                 .HasOne(r => r.User)
@@ -129,4 +147,4 @@ namespace MunicipalReportingAPI.Data
                 .HasIndex(rt => rt.Jti);
         }
     }
-}
+}
