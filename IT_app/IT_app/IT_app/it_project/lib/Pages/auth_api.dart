@@ -32,17 +32,13 @@ class AuthApi {
         _ownsClient = client == null,
         _baseUrl = _normaliseBaseUrl(baseUrl ?? _configuredBaseUrl());
 
-  // Override with --dart-define=API_BASE_URL=https://... for a real phone
-  // or for the hosted API.
+  // Override with --dart-define=API_BASE_URL=https://... if needed.
   static const String _envBaseUrl = String.fromEnvironment('API_BASE_URL');
 
   static String _configuredBaseUrl() {
     if (_envBaseUrl.isNotEmpty) return _envBaseUrl;
 
-    // The Android emulator reaches the PC through 10.0.2.2.
-    return Platform.isAndroid
-        ? 'http://10.0.2.2:5250'
-        : 'http://localhost:5250';
+    return 'https://municipalreportingapi.runasp.net';
   }
 
   final http.Client _client;
@@ -809,3 +805,4 @@ class AuthApi {
     return [];
   }
 }
+
