@@ -32,17 +32,13 @@ class AuthApi {
         _ownsClient = client == null,
         _baseUrl = _normaliseBaseUrl(baseUrl ?? _configuredBaseUrl());
 
-  // Override with --dart-define=API_BASE_URL=https://... for a real phone
-  // or for the hosted API.
+  // Override with --dart-define=API_BASE_URL=https://... if needed.
   static const String _envBaseUrl = String.fromEnvironment('API_BASE_URL');
 
   static String _configuredBaseUrl() {
     if (_envBaseUrl.isNotEmpty) return _envBaseUrl;
 
-    // The Android emulator reaches the PC through 10.0.2.2.
-    return Platform.isAndroid
-        ? 'http://10.0.2.2:5250'
-        : 'http://localhost:5250';
+    return 'https://municipalreportingapi.runasp.net';
   }
 
   final http.Client _client;
@@ -190,7 +186,7 @@ class AuthApi {
     }
 
     final response = await _send(
-      () => _client.get(
+          () => _client.get(
         _endpoint('/api/Issues/$issueId'),
         headers: _headers(accessToken: accessToken),
       ),
@@ -208,7 +204,7 @@ class AuthApi {
     required String accessToken,
   }) async {
     final response = await _send(
-      () => _client.get(
+          () => _client.get(
         _endpoint(ApiPaths.myReports),
         headers: _headers(accessToken: accessToken),
       ),
@@ -231,6 +227,37 @@ class AuthApi {
     if (decoded.any((item) => item is! Map)) {
       throw const AuthApiException(
         'The server returned an invalid report in the reports list.',
+      );
+    }
+
+    return decoded
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList(growable: false);
+  }
+
+  // Loads community notices visible to the signed-in user.
+  // Backend: GET /api/CommunityNotices
+  Future<List<Map<String, dynamic>>> getCommunityNotices({
+    required String accessToken,
+  }) async {
+    final response = await _send(
+          () => _client.get(
+        _endpoint('/api/CommunityNotices'),
+        headers: _headers(accessToken: accessToken),
+      ),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _exceptionFromResponse(response);
+    }
+
+    final body = response.body.trim();
+    if (body.isEmpty) return const [];
+
+    final decoded = jsonDecode(body);
+    if (decoded is! List || decoded.any((item) => item is! Map)) {
+      throw const AuthApiException(
+        'The server returned an unexpected community notices response.',
       );
     }
 
@@ -778,3 +805,4 @@ class AuthApi {
     return [];
   }
 }
+

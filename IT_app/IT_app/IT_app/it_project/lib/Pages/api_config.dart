@@ -1,3 +1,4 @@
+
 // checks the phones operating system.
 import 'dart:io';
 
@@ -7,7 +8,8 @@ class ApiConfig {
   const ApiConfig._();
 
   // reads a custom server address if provided.
-  static const String _envBaseUrl = String.fromEnvironment('API_BASE_URL');
+  static const String _envBaseUrl =
+  String.fromEnvironment('API_BASE_URL');
 
   // sets the local development port.
   static const int _devPort = 5250;
@@ -16,10 +18,7 @@ class ApiConfig {
   static String get baseUrl {
     if (_envBaseUrl.isNotEmpty) return normalise(_envBaseUrl);
 
-    // uses the correct address for the platform.
-    return Platform.isAndroid
-        ? 'http://10.0.2.2:$_devPort'
-        : 'http://localhost:$_devPort';
+    return 'https://municipalreportingapi.runasp.net';
   }
 
   // checks and formats the server address.
@@ -52,12 +51,15 @@ class ApiConfig {
     if (value.isEmpty) return null;
 
     // returns the address if it is already complete.
-    if (value.startsWith('http://') || value.startsWith('https://')) {
+    if (value.startsWith('http://') ||
+        value.startsWith('https://')) {
       return value;
     }
 
     // combines the server address with the photo path.
     final base = normalise(baseUrl ?? ApiConfig.baseUrl);
-    return value.startsWith('/') ? '$base$value' : '$base/$value';
+    return value.startsWith('/')
+        ? '$base$value'
+        : '$base/$value';
   }
 }
