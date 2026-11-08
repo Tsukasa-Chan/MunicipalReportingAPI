@@ -95,7 +95,7 @@ class _ChatPageState extends State<ChatPage> {
       isUser: false,
       isLocal: true,
       text:
-      "Hi! I'm the Fix My City assistant. I can explain how the app works, "
+      "Hi! I'm the Fix My Area assistant. I can explain how the app works, "
           'tell you what is happening in your area, or help you report a problem.',
     ),
   ];
@@ -162,10 +162,13 @@ class _ChatPageState extends State<ChatPage> {
     _scrollToEnd();
 
     try {
-      // sends the message using the user's access token.
-      final reply = await AuthStore.withAccessToken(
+      // The public assistant only answers short account-access questions.
+      // Signed-in users retain the original protected chatbot functionality.
+      final reply = AuthStore.isSignedIn
+          ? await AuthStore.withAccessToken(
             (_, token) => _api.send(token, _history()),
-      );
+      )
+          : await _api.sendPublic(trimmed);
 
       if (!mounted) return;
       setState(() => _messages.add(_Bubble(isUser: false, text: reply.reply, draft: reply.draft)));
@@ -280,11 +283,18 @@ class _ChatPageState extends State<ChatPage> {
 
   // displays suggested questions.
   Widget _suggestions() {
-    const questions = [
+    final questions = AuthStore.isSignedIn
+        ? const [
       'How do I submit a report?',
       'How many potholes are in my area?',
       'How do I download my reports?',
       'How do I change my email?',
+    ]
+        : const [
+      'How do I register an account?',
+      'How do I log in?',
+      'How do I reset my password?',
+      'How do I verify my email?',
     ];
 
     return Padding(
@@ -330,7 +340,7 @@ class _ChatPageState extends State<ChatPage> {
               controller: _input,
               minLines: 1,
               maxLines: 4,
-              maxLength: 1000,
+              maxLength: AuthStore.isSignedIn ? 1000 : 300,
               buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null,
               textInputAction: TextInputAction.send,
               onSubmitted: _send,

@@ -69,12 +69,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
           decoration: isSupervisor
               ? pageBackgroundDecoration(isSupervisor: isSupervisor)
               : const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Color(0xFFFFF8F4), Color(0xFFFFE9DC)],
-                  ),
-                ),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFFFFF8F4), Color(0xFFFFE9DC)],
+            ),
+          ),
           child: SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
@@ -154,6 +154,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     value: user?.email ?? 'Not set',
                     onTap: _showEmailDialog,
                   ),
+
+                  // Registered area card (residential users only).
+                  if (user != null && !user.isStaff && !user.isAdmin)
+                    _profileCard(
+                      icon: Icons.location_on_outlined,
+                      label: 'Registered Area',
+                      value: user.ward,
+                      onTap: _showAreaDialog,
+                    ),
 
                   // Password card
                   _profileCard(
@@ -317,7 +326,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => const StartupPage()),
-      (_) => false,
+          (_) => false,
     );
   }
 
@@ -380,41 +389,41 @@ class _EditProfilePageState extends State<EditProfilePage> {
               onPressed: saving
                   ? null
                   : () async {
-                      if (!formKey.currentState!.validate()) return;
+                if (!formKey.currentState!.validate()) return;
 
-                      setDialogState(() {
-                        saving = true;
-                        error = null;
-                      });
+                setDialogState(() {
+                  saving = true;
+                  error = null;
+                });
 
-                      try {
-                        await onSave();
+                try {
+                  await onSave();
 
-                        if (dialogContext.mounted) {
-                          Navigator.pop(dialogContext, true);
-                        }
-                      } on AuthApiException catch (e) {
-                        if (!dialogContext.mounted) return;
+                  if (dialogContext.mounted) {
+                    Navigator.pop(dialogContext, true);
+                  }
+                } on AuthApiException catch (e) {
+                  if (!dialogContext.mounted) return;
 
-                        if (e.isSessionExpired) {
-                          Navigator.pop(dialogContext, false);
-                          _goToStart();
-                          return;
-                        }
+                  if (e.isSessionExpired) {
+                    Navigator.pop(dialogContext, false);
+                    _goToStart();
+                    return;
+                  }
 
-                        setDialogState(() {
-                          saving = false;
-                          error = e.message;
-                        });
-                      } catch (_) {
-                        if (!dialogContext.mounted) return;
+                  setDialogState(() {
+                    saving = false;
+                    error = e.message;
+                  });
+                } catch (_) {
+                  if (!dialogContext.mounted) return;
 
-                        setDialogState(() {
-                          saving = false;
-                          error = 'Something went wrong. Please try again.';
-                        });
-                      }
-                    },
+                  setDialogState(() {
+                    saving = false;
+                    error = 'Something went wrong. Please try again.';
+                  });
+                }
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: _orange,
                 foregroundColor: Colors.white,
@@ -424,13 +433,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
               child: saving
                   ? const SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
+                height: 18,
+                width: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
                   : const Text('Save'),
             ),
           ],
@@ -439,6 +448,160 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
 
     return saved ?? false;
+  }
+
+  Future<void> _showAreaDialog() async {
+    final api = AuthApi();
+    try {
+      final wards = await api.getWards();
+      if (!mounted) return;
+      if (wards.isEmpty) {
+        _showMessage('No wards are available.');
+        return;
+      }
+
+      final currentUser = AuthStore.currentUser;
+      int? selectedWard;
+      int? selectedArea = currentUser?.areaId;
+      List<Map<String, dynamic>> areas = [];
+
+      // Preselect the ward that contains the user's current area.
+      if (selectedArea != null) {
+        for (final ward in wards) {
+          final wardId = (ward['id'] as num).toInt();
+          final wardAreas = await api.getAreasForWard(wardId);
+          if (wardAreas.any((a) => a['id'] == selectedArea)) {
+            selectedWard = wardId;
+            areas = wardAreas;
+            break;
+          }
+        }
+      }
+      if (!mounted) return;
+      bool loading = false;
+      String? errorMessage;
+      final result = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, setDialogState) => AlertDialog(
+            title: const Text('Change registered area'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Your existing reports will remain linked to their original areas. '
+                        'Your dashboard will use the newly selected area.',
+                  ),
+                  const SizedBox(height: 18),
+                  DropdownButtonFormField<int>(
+                    value: selectedWard,
+                    isExpanded: true,
+                    decoration: _fieldDecoration('Ward'),
+                    items: wards.map((ward) => DropdownMenuItem<int>(
+                      value: (ward['id'] as num).toInt(),
+                      child: Text(ward['name'].toString()),
+                    )).toList(),
+                    onChanged: loading ? null : (value) async {
+                      if (value == null) return;
+                      setDialogState(() {
+                        selectedWard = value;
+                        selectedArea = null;
+                        areas = [];
+                        loading = true;
+                        errorMessage = null;
+                      });
+                      try {
+                        final loaded = await api.getAreasForWard(value);
+                        if (!dialogContext.mounted) return;
+                        setDialogState(() => areas = loaded);
+                      } on AuthApiException catch (error) {
+                        if (!dialogContext.mounted) return;
+                        setDialogState(() => errorMessage = error.message);
+                      } catch (_) {
+                        if (!dialogContext.mounted) return;
+                        setDialogState(() => errorMessage = 'Could not load areas.');
+                      } finally {
+                        if (dialogContext.mounted) {
+                          setDialogState(() => loading = false);
+                        }
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<int>(
+                    value: selectedArea,
+                    isExpanded: true,
+                    decoration: _fieldDecoration('Area'),
+                    items: areas.map((area) => DropdownMenuItem<int>(
+                      value: (area['id'] as num).toInt(),
+                      child: Text(area['name'].toString(),
+                          overflow: TextOverflow.ellipsis),
+                    )).toList(),
+                    onChanged: loading ? null : (value) {
+                      setDialogState(() => selectedArea = value);
+                    },
+                  ),
+                  if (errorMessage != null) ...[
+                    const SizedBox(height: 12),
+                    Text(errorMessage!, style: const TextStyle(color: Colors.red)),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: loading ? null : () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: loading || selectedArea == null ||
+                    selectedArea == currentUser?.areaId
+                    ? null
+                    : () async {
+                  setDialogState(() {
+                    loading = true;
+                    errorMessage = null;
+                  });
+                  try {
+                    await AuthStore.updateRegisteredArea(selectedArea!);
+                    if (!dialogContext.mounted) return;
+                    Navigator.pop(dialogContext, true);
+                  } on AuthApiException catch (error) {
+                    if (!dialogContext.mounted) return;
+                    setDialogState(() => errorMessage = error.message);
+                  } catch (_) {
+                    if (!dialogContext.mounted) return;
+                    setDialogState(() => errorMessage =
+                    'Unable to update area. Please try again.');
+                  } finally {
+                    if (dialogContext.mounted) {
+                      setDialogState(() => loading = false);
+                    }
+                  }
+                },
+                child: loading
+                    ? const SizedBox(height: 18, width: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('Save Area'),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (result == true && mounted) {
+        setState(() {});
+        _showMessage('Registered area updated successfully.');
+      }
+    } on AuthApiException catch (error) {
+      if (mounted) _showMessage(error.message);
+    } catch (_) {
+      if (mounted) _showMessage('Unable to load wards. Please try again.');
+    } finally {
+      api.close();
+    }
   }
 
   Future<void> _showNameDialog() async {
@@ -505,9 +668,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
         const SizedBox(height: 12),
 
-        TextFormField(
+        _VisibilityPasswordField(
           controller: passwordController,
-          obscureText: true,
           decoration: _fieldDecoration('Current password'),
           validator: (value) => (value == null || value.isEmpty)
               ? 'Please enter your current password'
@@ -540,9 +702,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
       title: 'Change password',
       formKey: GlobalKey<FormState>(),
       fields: [
-        TextFormField(
+        _VisibilityPasswordField(
           controller: currentController,
-          obscureText: true,
           decoration: _fieldDecoration('Current password'),
           validator: (value) => (value == null || value.isEmpty)
               ? 'Please enter your current password'
@@ -551,18 +712,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
         const SizedBox(height: 12),
 
-        TextFormField(
+        _VisibilityPasswordField(
           controller: newController,
-          obscureText: true,
           decoration: _fieldDecoration('New password'),
           validator: _validateNewPassword,
         ),
 
         const SizedBox(height: 12),
 
-        TextFormField(
+        _VisibilityPasswordField(
           controller: confirmController,
-          obscureText: true,
           decoration: _fieldDecoration('Confirm new password'),
           validator: (value) {
             if (value == null || value.isEmpty) {
@@ -642,5 +801,45 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
 
     return null;
+  }
+}
+
+// Independent show/hide control for password fields in Edit Profile dialogs.
+class _VisibilityPasswordField extends StatefulWidget {
+  const _VisibilityPasswordField({
+    required this.controller,
+    required this.decoration,
+    this.validator,
+  });
+
+  final TextEditingController controller;
+  final InputDecoration decoration;
+  final FormFieldValidator<String>? validator;
+
+  @override
+  State<_VisibilityPasswordField> createState() =>
+      _VisibilityPasswordFieldState();
+}
+
+class _VisibilityPasswordFieldState extends State<_VisibilityPasswordField> {
+  bool _isVisible = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: widget.controller,
+      obscureText: !_isVisible,
+      validator: widget.validator,
+      decoration: widget.decoration.copyWith(
+        suffixIcon: IconButton(
+          tooltip: _isVisible ? 'Hide password' : 'Show password',
+          icon: Icon(
+            _isVisible ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+            color: const Color(0xFFC94F1B),
+          ),
+          onPressed: () => setState(() => _isVisible = !_isVisible),
+        ),
+      ),
+    );
   }
 }

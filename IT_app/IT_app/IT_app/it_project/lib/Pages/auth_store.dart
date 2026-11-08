@@ -410,6 +410,18 @@ class AuthStore {
     _users[username] = existing.copyWith(name: name, surname: surname);
   }
 
+  // Update the registered area on the server and refresh the in-memory profile.
+  // Previously submitted reports retain their original location association.
+  static Future<void> updateRegisteredArea(int areaId) async {
+    await withAccessToken(
+          (api, token) => api.updateRegisteredArea(
+        accessToken: token,
+        areaId: areaId,
+      ),
+    );
+    await reloadProfile();
+  }
+
   // Step 1 of an email change. The backend emails a link to the new address,
   // and the email only changes after the link is clicked.
   static Future<String> requestEmailChange({

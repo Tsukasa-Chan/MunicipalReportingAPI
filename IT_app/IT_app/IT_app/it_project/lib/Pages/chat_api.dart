@@ -127,6 +127,35 @@ class ChatApi {
     );
   }
 
+  // Send one limited account-access question without a login token.
+  // No history or personal information is transmitted in public mode.
+  Future<ChatReply> sendPublic(String question) async {
+    final trimmed = question.trim();
+    if (trimmed.isEmpty || trimmed.length > 300) {
+      throw const ChatApiException(
+        'Ask one question with no more than 300 characters.',
+      );
+    }
+
+    final response = await _send(
+          () => _client.post(
+        Uri.parse('$_baseUrl${ApiPaths.publicChat}'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'messages': [
+            {'role': 'user', 'content': trimmed},
+          ],
+        }),
+      ),
+    );
+    _throwIfFailed(response);
+    final json = _decodeObject(response);
+    return ChatReply(reply: (json['reply'] ?? '').toString());
+  }
+
   // submit a confirmed draft as a real report.
   Future<bool> submitReport({
     required String accessToken,
