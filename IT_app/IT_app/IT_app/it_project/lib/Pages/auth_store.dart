@@ -443,6 +443,21 @@ class AuthStore {
     return message;
   }
 
+  // Delete the authenticated account. Keep the user signed in if the server
+  // rejects the request; clear local authentication only after success.
+  static Future<void> deleteAccount({
+    required String currentPassword,
+  }) async {
+    await withAccessToken(
+          (api, token) => api.deleteAccount(
+        accessToken: token,
+        currentPassword: currentPassword,
+      ),
+    );
+
+    logout();
+  }
+
   // Clears the local session straight away, deletes the saved token, and
   // tells the backend in the background so the tokens are revoked.
   static void logout() {

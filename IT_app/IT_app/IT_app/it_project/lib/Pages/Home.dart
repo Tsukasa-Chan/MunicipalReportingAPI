@@ -132,7 +132,7 @@ class _HomePageState extends State<HomePage> {
                   const CircleAvatar(
                     radius: 30,
                     backgroundColor: Colors.white,
-                    backgroundImage: AssetImage('lib/img/app logo.png'),
+                    backgroundImage: AssetImage('lib/img/FixMyAreaLogo.jpeg'),
                   ),
                   const SizedBox(height: 8),
                   Text(

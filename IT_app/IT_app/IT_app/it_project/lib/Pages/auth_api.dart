@@ -509,6 +509,29 @@ class AuthApi {
     return _responseMessage(response);
   }
 
+  // DELETE ACCOUNT
+  // Backend: DELETE /api/Auth/delete-account
+  // Requires the current password and explicit confirmation.
+  Future<void> deleteAccount({
+    required String accessToken,
+    required String currentPassword,
+  }) async {
+    final response = await _send(
+          () => _client.delete(
+        _endpoint('/api/Auth/delete-account'),
+        headers: _headers(accessToken: accessToken),
+        body: jsonEncode({
+          'currentPassword': currentPassword,
+          'confirm': true,
+        }),
+      ),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _exceptionFromResponse(response);
+    }
+  }
+
   // SUBMIT BUG REPORT
   // Backend: POST /api/BugReports (authenticated).
   // Returns only after the backend confirms the report was accepted.
@@ -805,4 +828,3 @@ class AuthApi {
     return [];
   }
 }
-
