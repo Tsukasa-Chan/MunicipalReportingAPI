@@ -410,6 +410,18 @@ class AuthStore {
     _users[username] = existing.copyWith(name: name, surname: surname);
   }
 
+  // Update the registered area on the server and refresh the in-memory profile.
+  // Previously submitted reports retain their original location association.
+  static Future<void> updateRegisteredArea(int areaId) async {
+    await withAccessToken(
+          (api, token) => api.updateRegisteredArea(
+        accessToken: token,
+        areaId: areaId,
+      ),
+    );
+    await reloadProfile();
+  }
+
   // Step 1 of an email change. The backend emails a link to the new address,
   // and the email only changes after the link is clicked.
   static Future<String> requestEmailChange({
@@ -441,6 +453,21 @@ class AuthStore {
 
     logout();
     return message;
+  }
+
+  // Delete the authenticated account. Keep the user signed in if the server
+  // rejects the request; clear local authentication only after success.
+  static Future<void> deleteAccount({
+    required String currentPassword,
+  }) async {
+    await withAccessToken(
+          (api, token) => api.deleteAccount(
+        accessToken: token,
+        currentPassword: currentPassword,
+      ),
+    );
+
+    logout();
   }
 
   // Clears the local session straight away, deletes the saved token, and

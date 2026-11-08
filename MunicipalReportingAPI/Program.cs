@@ -7,6 +7,8 @@ using MunicipalReportingAPI.Data;
 using MunicipalReportingAPI.Models;
 using MunicipalReportingAPI.Services;
 using System.Globalization;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -213,6 +215,31 @@ builder.Services
         };
     });
 
+// Per-IP fixed-window rate limit for the anonymous help endpoint only.
+// This is per running server instance. Behind a trusted reverse proxy,
+// configure forwarded headers at the host if client IPs must be distinguished.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("public-chat", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 6,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new { message = "Too many questions. Please try again in a minute." },
+            cancellationToken: cancellationToken);
+    };
+});
+
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
@@ -245,11 +272,15 @@ if (!app.Environment.IsDevelopment())
 
 app.UseStaticFiles();
 
+app.UseRouting();
+
 app.UseCors("AllowAll");
 
 app.UseAuthentication();
 
 app.UseAuthorization();
+
+app.UseRateLimiter();
 
 app.MapControllers();
 

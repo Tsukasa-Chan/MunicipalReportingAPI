@@ -1,13 +1,12 @@
+
 import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:public_file_saver/public_file_saver.dart';
 import 'dart:typed_data';
 
-import 'ContactUs.dart';
 import 'EditProfile.dart';
 import 'Help.dart';
-import 'OtherReports.dart';
 import 'Reporting.dart';
 import 'StartUp.dart';
 import 'auth_api.dart';
@@ -53,7 +52,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     try {
       final response = await AuthStore.withAccessToken(
-        (api, token) => api.getMyReports(accessToken: token),
+            (api, token) => api.getMyReports(accessToken: token),
       );
       final reports = response
           .map(ReportRequest.fromApiJson)
@@ -78,7 +77,7 @@ class _ProfilePageState extends State<ProfilePage> {
       if (mounted) {
         setState(() {
           _reportsError =
-              'Could not load reports from the server. Check your connection and try again.';
+          'Could not load reports from the server. Check your connection and try again.';
           _reportsLoading = false;
         });
       }
@@ -106,7 +105,7 @@ class _ProfilePageState extends State<ProfilePage> {
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => const StartupPage()),
-      (_) => false,
+          (_) => false,
     );
   }
 
@@ -130,7 +129,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     try {
       final issue = await AuthStore.withAccessToken(
-        (api, token) => api.getIssueDetails(
+            (api, token) => api.getIssueDetails(
           issueId: issueId,
           accessToken: token,
         ),
@@ -162,7 +161,7 @@ class _ProfilePageState extends State<ProfilePage> {
       if (mounted) {
         setState(() {
           _reportStatusErrors[report.id] =
-              'Could not refresh this report status. Check your connection and try again.';
+          'Could not refresh this report status. Check your connection and try again.';
         });
       }
     } finally {
@@ -179,7 +178,7 @@ class _ProfilePageState extends State<ProfilePage> {
     'Pending' => 'Pending',
     _ => status.replaceAllMapped(
       RegExp(r'([a-z])([A-Z])'),
-      (match) => '${match[1]} ${match[2]}',
+          (match) => '${match[1]} ${match[2]}',
     ),
   };
 
@@ -194,28 +193,28 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _reportTimeline(ReportRequest report) {
     final entries = <(String, String, IconData)>[
       (
-        report.isSubmitted ? 'Report submitted' : 'Saved on this device',
-        report.isSubmitted
-            ? _timelineDate(report.submittedAt)
-            : '${_timelineDate(report.createdAt)} · Waiting to sync',
-        report.isSubmitted ? Icons.outgoing_mail : Icons.save_outlined,
+      report.isSubmitted ? 'Report submitted' : 'Saved on this device',
+      report.isSubmitted
+          ? _timelineDate(report.submittedAt)
+          : '${_timelineDate(report.createdAt)} · Waiting to sync',
+      report.isSubmitted ? Icons.outgoing_mail : Icons.save_outlined,
       ),
     ];
 
     if (report.scheduledAt != null) {
       entries.add((
-        'Assigned to municipal team',
-        _timelineDate(report.scheduledAt),
-        Icons.assignment_ind_outlined,
+      'Assigned to municipal team',
+      _timelineDate(report.scheduledAt),
+      Icons.assignment_ind_outlined,
       ));
     }
 
     entries.add((
-      'Current status: ${_statusLabel(report.status)}',
-      report.updatedAt == null
-          ? 'Latest status'
-          : 'Last updated ${_timelineDate(report.updatedAt)}',
-      report.status == 'Resolved' ? Icons.check_circle_outline : Icons.update,
+    'Current status: ${_statusLabel(report.status)}',
+    report.updatedAt == null
+        ? 'Latest status'
+        : 'Last updated ${_timelineDate(report.updatedAt)}',
+    report.status == 'Resolved' ? Icons.check_circle_outline : Icons.update,
     ));
 
     final canRefresh = report.issueId != null && report.isSubmitted;
@@ -253,10 +252,10 @@ class _ProfilePageState extends State<ProfilePage> {
                       : () => _refreshReportStatus(report),
                   icon: isRefreshing
                       ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                       : const Icon(Icons.refresh, color: _orange),
                 ),
             ],
@@ -403,14 +402,14 @@ class _ProfilePageState extends State<ProfilePage> {
     setState(() => _deleting = true);
     try {
       await AuthStore.withAccessToken(
-        (api, token) =>
+            (api, token) =>
             api.deleteReport(reportId: backendId, accessToken: token),
       );
       await ReportStore.removeReport(report);
       if (mounted) {
         setState(() {
           _serverReports.removeWhere(
-            (savedReport) => savedReport.backendId == backendId,
+                (savedReport) => savedReport.backendId == backendId,
           );
         });
         _message('Report deleted successfully.');
@@ -434,46 +433,46 @@ class _ProfilePageState extends State<ProfilePage> {
 
       pdf.addPage(
         pw.MultiPage(
-            pageFormat: PdfPageFormat.a4,
-            build: (context) => [
+          pageFormat: PdfPageFormat.a4,
+          build: (context) => [
             pw.Padding(
-            padding: const pw.EdgeInsets.all(30),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text(
-                  'Municipal Reporting App',
-                  style: pw.TextStyle(
-                    fontSize: 22,
-                    fontWeight: pw.FontWeight.bold,
+              padding: const pw.EdgeInsets.all(30),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    'Municipal Reporting App',
+                    style: pw.TextStyle(
+                      fontSize: 22,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
                   ),
-                ),
-                pw.SizedBox(height: 10),
-                pw.Text(
-                  'Report #${report.backendId ?? report.id}',
-                  style: pw.TextStyle(
-                    fontSize: 18,
-                    fontWeight: pw.FontWeight.bold,
+                  pw.SizedBox(height: 10),
+                  pw.Text(
+                    'Report #${report.backendId ?? report.id}',
+                    style: pw.TextStyle(
+                      fontSize: 18,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
                   ),
-                ),
-                pw.Divider(),
-                pw.SizedBox(height: 10),
-                pw.Text('Status: ${report.status}'),
-                pw.SizedBox(height: 10),
-                pw.Text('Date Submitted: ${report.createdAt.toLocal()}'),
-                pw.SizedBox(height: 10),
-                pw.Text('Category: ${report.issueType}'),
-                pw.SizedBox(height: 10),
-                pw.Text('Specific Issue: ${report.issue}'),
-                pw.SizedBox(height: 10),
-                pw.Text('Location: ${report.locationAddress}'),
-                pw.SizedBox(height: 10),
-                pw.Text(
-                  'Additional Information: '
-                      '${report.description.isEmpty ? 'None' : report.description}',
-                ),
-              ],
-            ),
+                  pw.Divider(),
+                  pw.SizedBox(height: 10),
+                  pw.Text('Status: ${report.status}'),
+                  pw.SizedBox(height: 10),
+                  pw.Text('Date Submitted: ${report.createdAt.toLocal()}'),
+                  pw.SizedBox(height: 10),
+                  pw.Text('Category: ${report.issueType}'),
+                  pw.SizedBox(height: 10),
+                  pw.Text('Specific Issue: ${report.issue}'),
+                  pw.SizedBox(height: 10),
+                  pw.Text('Location: ${report.locationAddress}'),
+                  pw.SizedBox(height: 10),
+                  pw.Text(
+                    'Additional Information: '
+                        '${report.description.isEmpty ? 'None' : report.description}',
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -538,12 +537,12 @@ class _ProfilePageState extends State<ProfilePage> {
         decoration: isSupervisor
             ? pageBackgroundDecoration(isSupervisor: isSupervisor)
             : const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xFFFFF8F4), Color(0xFFFFE9DC)],
-                ),
-              ),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFFFF8F4), Color(0xFFFFE9DC)],
+          ),
+        ),
         child: SafeArea(
           child: SingleChildScrollView(
             controller: scrollController,
@@ -642,23 +641,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   label: 'Area',
                   value: user?.ward ?? 'Not set',
                 ),
-                const SizedBox(height: 18),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    _quickLink(
-                      label: 'View Reports',
-                      icon: Icons.assignment,
-                      page: const OtherReportsPage(),
-                    ),
-                    _quickLink(
-                      label: 'Contact Us',
-                      icon: Icons.contact_mail,
-                      page: const ContactPage(),
-                    ),
-                  ],
-                ),
                 const SizedBox(height: 32),
                 Row(
                   children: [
@@ -670,10 +652,10 @@ class _ProfilePageState extends State<ProfilePage> {
                       onPressed: _reportsLoading ? null : _loadMyReports,
                       icon: _reportsLoading
                           ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                           : const Icon(Icons.refresh, color: _orange),
                     ),
                   ],
@@ -799,34 +781,12 @@ class _ProfilePageState extends State<ProfilePage> {
     ],
   );
 
-  Widget _quickLink({
-    required String label,
-    required IconData icon,
-    required Widget page,
-  }) {
-    return ElevatedButton.icon(
-      onPressed: () =>
-          Navigator.push(context, MaterialPageRoute(builder: (_) => page)),
-      icon: Icon(icon, size: 20),
-      label: Text(label),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: _orange,
-        foregroundColor: Colors.white,
-        elevation: 3,
-        shadowColor: _orange.withOpacity(0.25),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-      ),
-    );
-  }
-
   Widget _reportCard(ReportRequest report) {
     final canEdit =
         report.backendId != null &&
-        report.areaId != null &&
-        report.latitude != null &&
-        report.longitude != null;
+            report.areaId != null &&
+            report.latitude != null &&
+            report.longitude != null;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: _cardDecoration(),

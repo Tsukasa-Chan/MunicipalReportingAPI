@@ -10,6 +10,7 @@ class ApiPaths {
 
   // endpoints for the chatbot and reports.
   static const chat = '/api/Chat';
+  static const publicChat = '/api/Chat/public';
   static const reports = '/api/Reports';
   static const myReports = '/api/Reports/mine';
 

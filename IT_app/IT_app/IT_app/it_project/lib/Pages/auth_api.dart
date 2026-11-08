@@ -412,6 +412,39 @@ class AuthApi {
     }, accessToken: accessToken);
   }
 
+  // Lists available wards and their areas using the backend's stable IDs.
+  Future<List<Map<String, dynamic>>> getWards() =>
+      _getLocationList('/api/Locations/wards');
+
+  Future<List<Map<String, dynamic>>> getAreasForWard(int wardId) =>
+      _getLocationList('/api/Locations/wards/$wardId/areas');
+
+  Future<List<Map<String, dynamic>>> _getLocationList(String path) async {
+    final response = await _send(
+          () => _client.get(_endpoint(path), headers: _headers()),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _exceptionFromResponse(response);
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is! List || decoded.any((item) => item is! Map)) {
+      throw const AuthApiException('Unexpected locations response from server.');
+    }
+    return decoded
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList();
+  }
+
+  // Update only the registered area. Existing reports are never changed.
+  Future<Map<String, dynamic>> updateRegisteredArea({
+    required String accessToken,
+    required int areaId,
+  }) => _putJson(
+    '/api/Users/area',
+    {'areaId': areaId},
+    accessToken: accessToken,
+  );
+
   // CHANGE EMAIL (step 1)
   // Backend: POST /api/Users/change-email
   // Sends a confirmation link to the NEW address. The email only changes
@@ -507,6 +540,29 @@ class AuthApi {
     }
 
     return _responseMessage(response);
+  }
+
+  // DELETE ACCOUNT
+  // Backend: DELETE /api/Auth/delete-account
+  // Requires the current password and explicit confirmation.
+  Future<void> deleteAccount({
+    required String accessToken,
+    required String currentPassword,
+  }) async {
+    final response = await _send(
+          () => _client.delete(
+        _endpoint('/api/Auth/delete-account'),
+        headers: _headers(accessToken: accessToken),
+        body: jsonEncode({
+          'currentPassword': currentPassword,
+          'confirm': true,
+        }),
+      ),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _exceptionFromResponse(response);
+    }
   }
 
   // SUBMIT BUG REPORT
@@ -805,4 +861,3 @@ class AuthApi {
     return [];
   }
 }
-

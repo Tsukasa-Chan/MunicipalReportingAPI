@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'Help.dart';
-import 'OtherReports.dart';
-import 'Profile.dart';
-import 'Reporting.dart';
+import 'StartUp.dart';
 import 'auth_store.dart';
 import 'auth_api.dart';
 import 'legal_documents.dart';
@@ -309,6 +307,19 @@ class _SettingsPageState extends State<SettingsPage>
                   ),
 
                   const SizedBox(height: 24),
+
+                  // Account management
+                  if (AuthStore.currentUser?.isAdmin != true) ...[
+                    _sectionTitle('ACCOUNT MANAGEMENT'),
+                    const SizedBox(height: 4),
+                    _bubbleButton(
+                      context,
+                      icon: Icons.delete_forever_outlined,
+                      label: 'Delete Account',
+                      onTap: _confirmAccountDeletion,
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                 ],
               ),
             ),
@@ -316,53 +327,22 @@ class _SettingsPageState extends State<SettingsPage>
         ),
       ),
 
-      // Original bottom navigation functionality
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: pagePrimaryColor(
-          isSupervisor: isSupervisor,
-        ),
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.white70,
-        currentIndex: 1,
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const OtherReportsPage(),
-              ),
-            );
-          } else if (index == 1) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const ReportingPage(),
-              ),
-            );
-          } else {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const ProfilePage(),
-              ),
-            );
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.assignment),
-            label: 'View Complaints',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add),
-            label: 'New Report',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
-      ),
+    );
+  }
+
+  Future<void> _confirmAccountDeletion() async {
+    final deleted = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _DeleteAccountDialog(),
+    );
+
+    if (!mounted || deleted != true) return;
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const StartupPage()),
+          (_) => false,
     );
   }
 
@@ -901,6 +881,152 @@ class _BugReportDialogState extends State<_BugReportDialog> {
               ),
             )
                 : const Text('Submit'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Separate stateful dialog owns the password controller and its lifecycle.
+class _DeleteAccountDialog extends StatefulWidget {
+  const _DeleteAccountDialog();
+
+  @override
+  State<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
+  final _passwordController = TextEditingController();
+  bool _confirmed = false;
+  bool _submitting = false;
+  bool _obscurePassword = true;
+  String? _error;
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _deleteAccount() async {
+    if (_submitting || !_confirmed || _passwordController.text.isEmpty) return;
+
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+
+    try {
+      await AuthStore.deleteAccount(
+        currentPassword: _passwordController.text,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } on AuthApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = error.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = 'Could not delete your account. Please try again.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: !_submitting,
+      child: AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: _SettingsPageState._borderColor),
+        ),
+        title: const Text(
+          'Delete Account?',
+          style: TextStyle(
+            color: _SettingsPageState._darkText,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'This action is permanent. Reports on issues still marked '
+                    'Reported will be deleted. Reports on issues that are In Progress '
+                    'or Resolved may be retained without your account association.',
+                style: TextStyle(color: _SettingsPageState._secondaryText),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                enabled: !_submitting,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: InputDecoration(
+                  labelText: 'Current password',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                    onPressed: _submitting
+                        ? null
+                        : () => setState(() => _obscurePassword = !_obscurePassword),
+                    icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                  ),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 12),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _confirmed,
+                onChanged: _submitting
+                    ? null
+                    : (value) => setState(() => _confirmed = value ?? false),
+                activeColor: Colors.red.shade700,
+                title: const Text(
+                  'I understand that deleting my account is permanent.',
+                  style: TextStyle(fontSize: 13),
+                ),
+                controlAffinity: ListTileControlAffinity.leading,
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 8),
+                Text(_error!, style: const TextStyle(color: Colors.red)),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: _submitting ? null : () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: _submitting || !_confirmed || _passwordController.text.isEmpty
+                ? null
+                : _deleteAccount,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
+              foregroundColor: Colors.white,
+            ),
+            child: _submitting
+                ? const SizedBox(
+              height: 18,
+              width: 18,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            )
+                : const Text('Delete Account'),
           ),
         ],
       ),

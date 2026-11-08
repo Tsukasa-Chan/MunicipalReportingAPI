@@ -45,7 +45,7 @@ class _SupervisorDashboardPageState extends State<SupervisorDashboardPage> {
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.asset(
-                'lib/img/app logo.png',
+                'lib/img/FixMyAreaLogo.jpeg',
                 width: 42,
                 height: 42,
                 fit: BoxFit.cover,
@@ -88,7 +88,7 @@ class _SupervisorDashboardPageState extends State<SupervisorDashboardPage> {
                 ),
                 currentAccountPicture: const CircleAvatar(
                   backgroundColor: Colors.white,
-                  backgroundImage: AssetImage('lib/img/app logo.png'),
+                  backgroundImage: AssetImage('lib/img/FixMyAreaLogo.jpeg'),
                 ),
                 decoration: const BoxDecoration(
                   color: _orange,

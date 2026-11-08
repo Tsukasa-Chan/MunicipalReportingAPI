@@ -88,7 +88,7 @@ class SplashScreen extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(30),
           child: Image.asset(
-            'lib/img/app logo.png',
+            'lib/img/FixMyAreaLogo.jpeg',
             width: 180,
             height: 180,
             fit: BoxFit.cover,
@@ -146,7 +146,7 @@ class WelcomeScreen extends StatelessWidget {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(24),
                       child: Image.asset(
-                        'lib/img/app logo.png',
+                        'lib/img/FixMyAreaLogo.jpeg',
                         fit: BoxFit.cover,
                       ),
                     ),
