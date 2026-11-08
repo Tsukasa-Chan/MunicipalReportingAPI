@@ -155,6 +155,7 @@ class _ReportingPageState extends State<ReportingPage> {
         ],
       ),
       body: Container(
+        height: double.infinity,
         decoration: pageBackgroundDecoration(isSupervisor: isSupervisor),
         child: Form(
           key: formKey,
@@ -394,33 +395,6 @@ class _ReportingPageState extends State<ReportingPage> {
           ),
         ),
       ),
-      // Keep the original bottom navigation on the report submission screen.
-      bottomNavigationBar: isEditing
-          ? null
-          : BottomNavigationBar(
-              backgroundColor: pagePrimaryColor(isSupervisor: isSupervisor),
-              currentIndex: 1,
-              onTap: (index) {
-                if (index == 0) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const StatusPage()),
-                  );
-                } else {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const HelpPage()),
-                  );
-                }
-              },
-              items: const [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.assignment),
-                  label: 'Profile',
-                ),
-                BottomNavigationBarItem(icon: Icon(Icons.help), label: 'Help'),
-              ],
-            ),
     );
   }
 

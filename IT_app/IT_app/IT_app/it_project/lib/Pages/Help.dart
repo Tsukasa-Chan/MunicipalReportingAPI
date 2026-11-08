@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'auth_store.dart';
 import 'Supervisor_theme.dart';
+import 'chat_page.dart';
 
 class HelpPage extends StatelessWidget {
   const HelpPage({super.key});
@@ -215,6 +216,70 @@ class HelpPage extends StatelessWidget {
                                 Icons.open_in_new,
                                 color: Color(0xFFC94F1B),
                                 size: 22,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // AI Chatbot button
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFC94F1B),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFC94F1B).withOpacity(0.15),
+                          blurRadius: 12,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(16),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ChatPage(),
+                            ),
+                          );
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 18,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.smart_toy_outlined,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                              SizedBox(width: 16),
+                              Expanded(
+                                child: Text(
+                                  'AI Chatbot',
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                color: Colors.white,
+                                size: 18,
                               ),
                             ],
                           ),
