@@ -131,7 +131,24 @@ class _ReportingPageState extends State<ReportingPage> {
     final status = await Permission.locationWhenInUse.status;
     if (!mounted) return;
     setState(
-      () => _locationPermissionGranted = status.isGranted || status.isLimited,
+          () => _locationPermissionGranted = status.isGranted || status.isLimited,
+    );
+  }
+
+  Widget _requiredLabel(String label) {
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(text: label),
+          const TextSpan(
+            text: ' *',
+            style: TextStyle(
+              color: Colors.red,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -179,21 +196,31 @@ class _ReportingPageState extends State<ReportingPage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '* Indicates required fields',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.red,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                   const SizedBox(height: 24),
                   DropdownButtonFormField<String>(
                     key: ValueKey('category-$selectedIssueType'),
                     initialValue: selectedIssueType,
                     isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Type of issue',
+                    decoration: InputDecoration(
+                      label: _requiredLabel('Type of issue'),
                     ),
                     items: issueTypes
                         .map(
                           (item) => DropdownMenuItem(
-                            value: item,
-                            child: Text(item, overflow: TextOverflow.ellipsis),
-                          ),
-                        )
+                        value: item,
+                        child: Text(item, overflow: TextOverflow.ellipsis),
+                      ),
+                    )
                         .toList(),
                     onChanged: (value) => setState(() {
                       selectedIssueType = value;
@@ -211,19 +238,19 @@ class _ReportingPageState extends State<ReportingPage> {
                           ? selectedIssue
                           : null,
                       isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Specific issue',
+                      decoration: InputDecoration(
+                        label: _requiredLabel('Specific issue'),
                       ),
                       items: availableIssues
                           .map(
                             (item) => DropdownMenuItem(
-                              value: item,
-                              child: Text(
-                                item,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          )
+                          value: item,
+                          child: Text(
+                            item,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      )
                           .toList(),
                       onChanged: (value) =>
                           setState(() => selectedIssue = value),
@@ -237,17 +264,19 @@ class _ReportingPageState extends State<ReportingPage> {
                     key: ValueKey('ward-$selectedWard'),
                     initialValue: selectedWard,
                     isExpanded: true,
-                    decoration: const InputDecoration(labelText: 'Ward'),
+                    decoration: InputDecoration(
+                      label: _requiredLabel('Ward'),
+                    ),
                     items: AuthStore.wardAreas.keys
                         .map(
                           (ward) => DropdownMenuItem(
-                            value: ward,
-                            child: Text('Ward $ward'),
-                          ),
-                        )
+                        value: ward,
+                        child: Text('Ward $ward'),
+                      ),
+                    )
                         .toList(),
                     validator: (value) =>
-                        value == null ? 'Please select your ward' : null,
+                    value == null ? 'Please select your ward' : null,
                     onChanged: (ward) => setState(() {
                       selectedWard = ward;
                       selectedCommunityArea = null;
@@ -258,28 +287,30 @@ class _ReportingPageState extends State<ReportingPage> {
                     DropdownButtonFormField<String>(
                       key: ValueKey('area-$selectedWard'),
                       initialValue:
-                          (AuthStore.wardAreas[selectedWard] ??
-                                  const <String>[])
-                              .contains(selectedCommunityArea)
+                      (AuthStore.wardAreas[selectedWard] ??
+                          const <String>[])
+                          .contains(selectedCommunityArea)
                           ? selectedCommunityArea
                           : null,
                       isExpanded: true,
-                      decoration: const InputDecoration(labelText: 'Area'),
+                      decoration: InputDecoration(
+                        label: _requiredLabel('Area'),
+                      ),
                       items:
-                          (AuthStore.wardAreas[selectedWard] ??
-                                  const <String>[])
-                              .map(
-                                (area) => DropdownMenuItem(
-                                  value: area,
-                                  child: Text(
-                                    area,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              )
-                              .toList(),
+                      (AuthStore.wardAreas[selectedWard] ??
+                          const <String>[])
+                          .map(
+                            (area) => DropdownMenuItem(
+                          value: area,
+                          child: Text(
+                            area,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      )
+                          .toList(),
                       validator: (value) =>
-                          value == null ? 'Please select your area' : null,
+                      value == null ? 'Please select your area' : null,
                       onChanged: (value) =>
                           setState(() => selectedCommunityArea = value),
                     ),
@@ -316,12 +347,13 @@ class _ReportingPageState extends State<ReportingPage> {
                         child: _field(
                           controller: locationController,
                           label: 'Location',
+                          requiredField: true,
                           readOnly: true,
                           onTap: _openLocationPicker,
                           hint:
-                              'Tap to search for a road or choose a point on the map',
+                          'Tap to search for a road or choose a point on the map',
                           validator: (value) =>
-                              value == null || value.trim().isEmpty
+                          value == null || value.trim().isEmpty
                               ? 'Please choose a location on the map'
                               : null,
                         ),
@@ -340,7 +372,7 @@ class _ReportingPageState extends State<ReportingPage> {
                   const SizedBox(height: 14),
                   _field(
                     controller: additionalInfoController,
-                    label: 'Additional Information',
+                    label: 'Additional Information (Optional)',
                     hint: 'Add any additional details to your report',
                   ),
                   const SizedBox(height: 14),
@@ -350,8 +382,8 @@ class _ReportingPageState extends State<ReportingPage> {
                     label: Text(
                       selectedImage == null
                           ? (isEditing
-                                ? 'Replace Image (optional)'
-                                : 'Add Image')
+                          ? 'Replace Image (optional)'
+                          : 'Add Image (optional)')
                           : 'Image selected: ${selectedImage!.name}',
                     ),
                   ),
@@ -378,12 +410,12 @@ class _ReportingPageState extends State<ReportingPage> {
                           ),
                           child: _isSaving
                               ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          )
                               : Text(isEditing ? 'Save Changes' : 'Submit'),
                         ),
                       ),
@@ -404,6 +436,7 @@ class _ReportingPageState extends State<ReportingPage> {
     String? Function(String?)? validator,
     String? hint,
     bool readOnly = false,
+    bool requiredField = false,
     VoidCallback? onTap,
   }) {
     return TextFormField(
@@ -412,7 +445,7 @@ class _ReportingPageState extends State<ReportingPage> {
       readOnly: readOnly,
       onTap: onTap,
       decoration: InputDecoration(
-        labelText: label,
+        label: requiredField ? _requiredLabel(label) : Text(label),
         hintText: hint,
         filled: true,
         fillColor: Colors.white,
@@ -432,7 +465,7 @@ class _ReportingPageState extends State<ReportingPage> {
         initialAddress: locationController.text,
         initialLocation: _parseCoordinates(pinLocationController.text),
         locationPermissionGranted:
-            permissionStatus.isGranted || permissionStatus.isLimited,
+        permissionStatus.isGranted || permissionStatus.isLimited,
       ),
     );
     if (!mounted || selection == null) return;
@@ -573,7 +606,7 @@ class _ReportingPageState extends State<ReportingPage> {
           );
         }
         await AuthStore.withAccessToken(
-          (api, accessToken) => api.updateReport(
+              (api, accessToken) => api.updateReport(
             reportId: serverId,
             accessToken: accessToken,
             issueCategory: _getBackendIssueCategory(),
@@ -608,7 +641,7 @@ class _ReportingPageState extends State<ReportingPage> {
       }
 
       final response = await AuthStore.withAccessToken(
-        (api, accessToken) => api.createReport(
+            (api, accessToken) => api.createReport(
           accessToken: accessToken,
           issueCategory: _getBackendIssueCategory(),
           issueType: _getBackendIssueType(),
@@ -624,8 +657,8 @@ class _ReportingPageState extends State<ReportingPage> {
       // Local cache IDs are NOT SQL Server report IDs.
       final rawServerId =
           response['id'] ??
-          response['reportId'] ??
-          (response['report'] is Map ? response['report']['id'] : null);
+              response['reportId'] ??
+              (response['report'] is Map ? response['report']['id'] : null);
       final serverId = rawServerId is num
           ? rawServerId.toInt()
           : int.tryParse(rawServerId?.toString() ?? '');
@@ -831,8 +864,8 @@ class _LocationPickerDialogState extends State<_LocationPickerDialog> {
                 ),
               const Text(
                 'Search and address lookup use OpenStreetMap. '
-                'Your search or coordinates are sent to its services. '
-                '© OpenStreetMap contributors.',
+                    'Your search or coordinates are sent to its services. '
+                    '© OpenStreetMap contributors.',
                 style: TextStyle(fontSize: 11, color: Colors.black54),
               ),
               const SizedBox(height: 8),
@@ -859,10 +892,10 @@ class _LocationPickerDialogState extends State<_LocationPickerDialog> {
                     onPressed: _isSearching || _isLocating ? null : _searchRoad,
                     icon: _isSearching
                         ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                         : const Icon(Icons.search),
                   ),
                 ),
@@ -872,12 +905,12 @@ class _LocationPickerDialogState extends State<_LocationPickerDialog> {
                 onPressed: _selectedLocation == null
                     ? null
                     : () => Navigator.pop(
-                        context,
-                        _LocationSelection(
-                          address: _addressController.text.trim(),
-                          location: _selectedLocation,
-                        ),
-                      ),
+                  context,
+                  _LocationSelection(
+                    address: _addressController.text.trim(),
+                    location: _selectedLocation,
+                  ),
+                ),
                 child: const Text('Use this location'),
               ),
             ],
@@ -932,7 +965,7 @@ class _LocationPickerDialogState extends State<_LocationPickerDialog> {
         setState(() {
           _locationPermissionGranted = status.isGranted || status.isLimited;
           _searchError =
-              'Allow location access in app settings to use your precise location.';
+          'Allow location access in app settings to use your precise location.';
         });
         return;
       }
@@ -962,25 +995,25 @@ class _LocationPickerDialogState extends State<_LocationPickerDialog> {
         setState(() {
           _locationServicesDisabled = true;
           _searchError =
-              'Turn on device location services to find your precise location.';
+          'Turn on device location services to find your precise location.';
         });
     } on PermissionDeniedException {
       if (mounted)
         setState(
-          () => _searchError =
-              'Allow location access in app settings to use your precise location.',
+              () => _searchError =
+          'Allow location access in app settings to use your precise location.',
         );
     } on TimeoutException {
       if (mounted)
         setState(
-          () => _searchError =
-              'Could not get your location in time. Try again or choose a point on the map.',
+              () => _searchError =
+          'Could not get your location in time. Try again or choose a point on the map.',
         );
     } catch (_) {
       if (mounted)
         setState(
-          () => _searchError =
-              'Could not find your location. Try again or choose a point on the map.',
+              () => _searchError =
+          'Could not find your location. Try again or choose a point on the map.',
         );
     } finally {
       if (mounted) setState(() => _isLocating = false);
@@ -1014,8 +1047,8 @@ class _LocationPickerDialogState extends State<_LocationPickerDialog> {
       if (!mounted) return;
       if (response.statusCode != 200) {
         setState(
-          () => _searchError =
-              'Your coordinates were found, but the address lookup failed (HTTP ${response.statusCode}).',
+              () => _searchError =
+          'Your coordinates were found, but the address lookup failed (HTTP ${response.statusCode}).',
         );
         return;
       }
@@ -1027,33 +1060,33 @@ class _LocationPickerDialogState extends State<_LocationPickerDialog> {
         });
       } else {
         setState(
-          () => _searchError =
-              'Your coordinates were found, but no street address was available.',
+              () => _searchError =
+          'Your coordinates were found, but no street address was available.',
         );
       }
     } on http.ClientException {
       if (mounted)
         setState(
-          () => _searchError =
-              'Your coordinates were found, but the address lookup could not connect.',
+              () => _searchError =
+          'Your coordinates were found, but the address lookup could not connect.',
         );
     } on TimeoutException {
       if (mounted)
         setState(
-          () => _searchError =
-              'Your coordinates were found, but the address lookup timed out.',
+              () => _searchError =
+          'Your coordinates were found, but the address lookup timed out.',
         );
     } on FormatException {
       if (mounted)
         setState(
-          () => _searchError =
-              'Your coordinates were found, but the address response was unreadable.',
+              () => _searchError =
+          'Your coordinates were found, but the address response was unreadable.',
         );
     } catch (_) {
       if (mounted)
         setState(
-          () => _searchError =
-              'Your coordinates were found, but the address lookup could not complete.',
+              () => _searchError =
+          'Your coordinates were found, but the address lookup could not complete.',
         );
     }
   }
@@ -1084,16 +1117,16 @@ class _LocationPickerDialogState extends State<_LocationPickerDialog> {
       if (!mounted) return;
       if (response.statusCode != 200) {
         setState(
-          () => _searchError =
-              'Location search failed (HTTP ${response.statusCode}). Try again.',
+              () => _searchError =
+          'Location search failed (HTTP ${response.statusCode}). Try again.',
         );
         return;
       }
       final results = jsonDecode(response.body);
       if (results is! List || results.isEmpty || results.first is! Map) {
         setState(
-          () => _searchError =
-              'No matching location found. Try adding the suburb or city.',
+              () => _searchError =
+          'No matching location found. Try adding the suburb or city.',
         );
         return;
       }
@@ -1109,8 +1142,8 @@ class _LocationPickerDialogState extends State<_LocationPickerDialog> {
           longitude < -180 ||
           longitude > 180) {
         setState(
-          () => _searchError =
-              'The location search returned invalid coordinates. Try again.',
+              () => _searchError =
+          'The location search returned invalid coordinates. Try again.',
         );
         return;
       }
@@ -1128,8 +1161,8 @@ class _LocationPickerDialogState extends State<_LocationPickerDialog> {
     } on http.ClientException {
       if (mounted)
         setState(
-          () => _searchError =
-              'Could not connect to location search. Check your internet connection.',
+              () => _searchError =
+          'Could not connect to location search. Check your internet connection.',
         );
     } on TimeoutException {
       if (mounted)
@@ -1137,13 +1170,13 @@ class _LocationPickerDialogState extends State<_LocationPickerDialog> {
     } on FormatException {
       if (mounted)
         setState(
-          () => _searchError =
-              'Location search returned an unreadable response. Try again.',
+              () => _searchError =
+          'Location search returned an unreadable response. Try again.',
         );
     } catch (_) {
       if (mounted)
         setState(
-          () => _searchError = 'Location search failed. Please try again.',
+              () => _searchError = 'Location search failed. Please try again.',
         );
     } finally {
       if (mounted) setState(() => _isSearching = false);

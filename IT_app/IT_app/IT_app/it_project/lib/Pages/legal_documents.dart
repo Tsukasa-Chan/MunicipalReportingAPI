@@ -4,17 +4,17 @@ import 'package:file_saver/file_saver.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-/// Legal documents for Fix My City, shown in Settings and offered as downloadable text files.
+/// Legal documents for FIX MY AREA, shown in Settings and offered as downloadable text files.
 /// NOTE: have these reviewed/updated by the municipality's legal team before release.
 const String privacyPolicyTitle = 'Privacy Policy';
 
 const String privacyPolicyFileName = 'Fix_My_City_Privacy_Policy';
 
 const String privacyPolicyText = '''
-FIX MY CITY - PRIVACY POLICY
+FIX MY AREA - PRIVACY POLICY
 
 1. Introduction
-Fix My City helps you report local issues and follow their progress. This policy explains what information the app collects, how it is used and your choices.
+FIX MY AREA helps you report local issues and follow their progress. This policy explains what information the app collects, how it is used and your choices.
 
 2. Information we collect
 - Account information: your full name, email address, password (stored securely), home area and optional profile picture.
@@ -50,13 +50,13 @@ const String termsTitle = 'Terms & Conditions';
 const String termsFileName = 'Fix_My_City_Terms_and_Conditions';
 
 const String termsText = '''
-FIX MY CITY - TERMS AND CONDITIONS
+FIX MY AREA - TERMS AND CONDITIONS
 
 1. Acceptance
-By creating an account or using Fix My City you agree to these terms. If you do not agree, please do not use the app.
+By creating an account or using FIX MY AREA you agree to these terms. If you do not agree, please do not use the app.
 
 2. Purpose of the app
-Fix My City lets residents report local issues (such as potholes, water leaks or street lights) to the municipality and follow their progress. Submitting a report does not guarantee a particular response time or outcome.
+FIX MY AREA lets residents report local issues (such as potholes, water leaks or street lights) to the municipality and follow their progress. Submitting a report does not guarantee a particular response time or outcome.
 
 3. Your account
 - You must provide accurate information when registering.
@@ -72,7 +72,7 @@ When using the app you agree not to:
 - use the app for anything unlawful.
 
 5. Emergencies
-Fix My City is not an emergency service. For emergencies or anything that puts life at risk, contact the relevant emergency services directly.
+FIX MY AREA is not an emergency service. For emergencies or anything that puts life at risk, contact the relevant emergency services directly.
 
 6. Your content
 You keep ownership of the reports and photos you submit. You give the municipality permission to use, store and share them as needed to investigate, resolve and report on the issue, as described in the Privacy Policy.
@@ -115,7 +115,7 @@ String _today() {
 /// "1. Heading" lines = section headings, "- item" lines = bullets,
 /// everything else = body text.
 Future<Uint8List> buildLegalPdf(String title, String text) async {
-  final doc = pw.Document(title: 'Fix My City - $title', author: 'Fix My City');
+  final doc = pw.Document(title: 'FIX MY AREA - $title', author: 'FIX MY AREA');
   final headingPattern = RegExp(r'^\d+\.\s');
   final bodyStyle = pw.TextStyle(fontSize: 10.5, color: _ink, lineSpacing: 3);
   final widgets = <pw.Widget>[];
@@ -137,7 +137,7 @@ Future<Uint8List> buildLegalPdf(String title, String text) async {
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               pw.Text(
-                'FIX MY CITY',
+                'FIX MY AREA',
                 style: pw.TextStyle(
                   fontSize: 20,
                   fontWeight: pw.FontWeight.bold,
@@ -273,7 +273,7 @@ Future<Uint8List> buildLegalPdf(String title, String text) async {
           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
           children: [
             pw.Text(
-              'Fix My City  |  $title',
+              'FIX MY AREA  |  $title',
               style: pw.TextStyle(fontSize: 8.5, color: _muted),
             ),
             pw.Text(
