@@ -290,6 +290,20 @@ namespace MunicipalReportingAPI.Controllers
                     "Invalid or expired refresh token");
             }
 
+            // Check account status before the revoked-token branch, since deactivation
+            // revokes refresh tokens and the Flutter app needs a distinct reason.
+            var user = await _userManager.FindByIdAsync(
+                storedToken.UserId.ToString());
+
+            if (user != null && !user.IsActive)
+            {
+                return Unauthorized(new
+                {
+                    code = "account_deactivated",
+                    message = "Your account has been deactivated. Please contact an administrator."
+                });
+            }
+
             if (storedToken.IsRevoked)
             {
                 // A token that was already exchanged for a new one is back. Either the client
@@ -319,19 +333,9 @@ namespace MunicipalReportingAPI.Controllers
                     "Invalid or expired refresh token");
             }
 
-            var user = await _userManager.FindByIdAsync(
-                storedToken.UserId.ToString());
-
             if (user == null)
             {
                 return Unauthorized("User not found");
-            }
-
-            if (!user.IsActive)
-            {
-                storedToken.IsRevoked = true;
-                await _context.SaveChangesAsync();
-                return Unauthorized("This account has been deactivated. Contact an administrator.");
             }
 
             var roles = await _userManager.GetRolesAsync(user);

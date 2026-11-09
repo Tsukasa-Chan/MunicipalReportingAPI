@@ -15,7 +15,7 @@ namespace MunicipalReportingAPI.Migrations
                 table: "AspNetUsers",
                 type: "bit",
                 nullable: false,
-                defaultValue: false);
+                defaultValue: true);
         }
 
         /// <inheritdoc />
