@@ -148,6 +148,12 @@ function Portal({ user, onSignOut }: { user: PortalUser; onSignOut: () => void }
       return role === "Supervisor" ? `${u.fullName} is now a supervisor.` : `${u.fullName} is no longer a supervisor.`;
     });
 
+  const setActive = (userId: string, isActive: boolean) =>
+    run(`active:${userId}`, async () => {
+      const u = await api.setUserActive(userId, isActive);
+      return isActive ? `${u.fullName}'s account has been reactivated.` : `${u.fullName}'s account has been deactivated.`;
+    });
+
   const issues = data?.issues ?? [];
   const reports = data?.reports ?? [];
   const users = data?.users ?? [];
@@ -230,7 +236,7 @@ function Portal({ user, onSignOut }: { user: PortalUser; onSignOut: () => void }
             {tab === "issues" && <IssuesPanel mode="admin" issues={issues} busyKey={busyKey} onOpenIssue={setSelectedIssueId} />}
             {tab === "reports" && <ReportsPanel reports={reports} issues={issues} onOpenIssue={setSelectedIssueId} />}
             {tab === "notices" && isAdmin && <NoticesPanel />}
-            {tab === "users" && <UsersPanel users={users} openLoad={openLoad} busyKey={busyKey} onSetRole={setRole} />}
+            {tab === "users" && <UsersPanel users={users} openLoad={openLoad} busyKey={busyKey} onSetRole={setRole} onSetActive={setActive} currentUserId={user.id} />}
             {tab === "my-issues" && <IssuesPanel mode="supervisor" issues={issues} busyKey={busyKey} onOpenIssue={setSelectedIssueId} onSetStatus={setStatus} />}
           </>
         )}

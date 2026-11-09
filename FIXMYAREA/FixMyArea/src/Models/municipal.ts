@@ -20,6 +20,8 @@ export interface PortalUser {
   ward: string;
   role: Role;
   registeredDate: string;
+  /** False when an admin has deactivated the account. Missing is treated as active. */
+  isActive?: boolean;
   /** Number of reports the user has submitted (derived, residents only). */
   reportCount?: number;
   /** Mock-only. Never present on objects returned by the API layer. */

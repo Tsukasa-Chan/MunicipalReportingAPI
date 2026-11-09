@@ -50,6 +50,7 @@ interface with `fetch` and export it as `api`; no screen needs to change. Sugges
 | `assignSupervisor` | `PUT /api/issues/{id}/supervisor` `{ supervisorId }` (Admin) |
 | `setIssueStatus` | `PUT /api/issues/{id}/status` `{ status }` (assigned Supervisor) |
 | `setUserRole` | `PUT /api/users/{id}/role` `{ role }` (Admin) |
+| `setUserActive` | `PUT /api/admin/users/{id}/active` `{ isActive }` (Admin) — returns the user incl. `isActive`; login must reject inactive users |
 
 The backend must also create/find the Issue when a resident submits a Report (the grouping is
 not done in the UI). The current backend has no `Issue` entity yet.

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Search, UserMinus, UserPlus } from "lucide-react";
+import { Search, UserCheck, UserMinus, UserPlus, UserX } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,12 +29,15 @@ interface Props {
   openLoad: Record<string, number>;
   busyKey: string | null;
   onSetRole: (userId: string, role: "Resident" | "Supervisor") => void;
+  onSetActive: (userId: string, isActive: boolean) => void;
+  currentUserId: string;
 }
 
 /** Simple user directory. Admins can see everyone and decide who is a supervisor. */
-export default function UsersPanel({ users, openLoad, busyKey, onSetRole }: Props) {
+export default function UsersPanel({ users, openLoad, busyKey, onSetRole, onSetActive, currentUserId }: Props) {
   const [filter, setFilter] = useState<RoleFilter>("all");
   const [search, setSearch] = useState("");
+  const [confirmDeactivate, setConfirmDeactivate] = useState<PortalUser | null>(null);
 
   const counts = useMemo(() => {
     const c: Record<RoleFilter, number> = { all: users.length, Resident: 0, Supervisor: 0, Admin: 0 };
@@ -82,17 +86,20 @@ export default function UsersPanel({ users, openLoad, busyKey, onSetRole }: Prop
                 <TableHead>Contact</TableHead>
                 <TableHead>Ward</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead className="text-center">Activity</TableHead>
                 <TableHead>Registered</TableHead>
                 <TableHead className="text-right">Supervisor access</TableHead>
+                <TableHead className="text-right">Account</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {visible.map((u) => {
                 const open = openLoad[u.id] ?? 0;
-                const busy = busyKey === `role:${u.id}`;
+                const busy = busyKey === `role:${u.id}` || busyKey === `active:${u.id}`;
+                const active = u.isActive !== false;
                 return (
-                  <TableRow key={u.id}>
+                  <TableRow key={u.id} className={cn(!active && "opacity-60")}>
                     <TableCell className="font-medium">{u.fullName}</TableCell>
                     <TableCell>
                       <span className="block text-sm">{u.email}</span>
@@ -100,6 +107,11 @@ export default function UsersPanel({ users, openLoad, busyKey, onSetRole }: Prop
                     </TableCell>
                     <TableCell>{u.ward}</TableCell>
                     <TableCell><Badge variant="outline" className={ROLE_STYLE[u.role]}>{u.role}</Badge></TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={active ? "border-emerald-300 bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300" : "border-destructive/40 bg-destructive/10 text-destructive"}>
+                        {active ? "Active" : "Deactivated"}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-center text-sm">
                       {u.role === "Resident" && <span>{u.reportCount ?? 0} report{(u.reportCount ?? 0) === 1 ? "" : "s"}</span>}
                       {u.role === "Supervisor" && <span>{open} open issue{open === 1 ? "" : "s"}</span>}
@@ -115,6 +127,15 @@ export default function UsersPanel({ users, openLoad, busyKey, onSetRole }: Prop
                       )}
                       {u.role === "Admin" && <span className="text-sm text-muted-foreground">—</span>}
                     </TableCell>
+                    <TableCell className="text-right">
+                      {u.role === "Admin" || u.id === currentUserId ? (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      ) : active ? (
+                        <Button size="sm" variant="outline" disabled={busy || (u.role === "Supervisor" && open > 0)} title={u.role === "Supervisor" && open > 0 ? "Reassign this supervisor's open issues first" : undefined} onClick={() => setConfirmDeactivate(u)}><UserX />Deactivate</Button>
+                      ) : (
+                        <Button size="sm" variant="outline" disabled={busy} onClick={() => onSetActive(u.id, true)}><UserCheck />Activate</Button>
+                      )}
+                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -122,6 +143,19 @@ export default function UsersPanel({ users, openLoad, busyKey, onSetRole }: Prop
           </Table>
         </div>
       )}
+
+      <AlertDialog open={confirmDeactivate !== null} onOpenChange={(o) => !o && setConfirmDeactivate(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deactivate {confirmDeactivate?.fullName}?</AlertDialogTitle>
+            <AlertDialogDescription>They won't be able to sign in until you activate the account again. Nothing they've submitted is deleted.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (confirmDeactivate) onSetActive(confirmDeactivate.id, false); setConfirmDeactivate(null); }}>Deactivate</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

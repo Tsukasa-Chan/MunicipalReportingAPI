@@ -115,6 +115,7 @@ function mapUser(d: any): PortalUser {
     ward: "",
     role,
     registeredDate: "",
+    isActive: d.isActive ?? true,
     reportCount: role === "Resident" ? d.reportCount ?? 0 : undefined,
   };
 }
@@ -353,6 +354,14 @@ export function createHttpApi(): MunicipalApi {
       const updated = await request<any>(`/api/admin/users/${userId}/role`, {
         method: "PUT",
         body: { role: role === "Resident" ? "User" : "Supervisor" },
+      });
+      return mapUser(updated);
+    },
+
+    async setUserActive(userId, isActive) {
+      const updated = await request<any>(`/api/admin/users/${userId}/active`, {
+        method: "PUT",
+        body: { isActive },
       });
       return mapUser(updated);
     },

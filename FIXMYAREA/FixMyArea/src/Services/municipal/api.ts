@@ -35,6 +35,8 @@ export interface MunicipalApi {
   setIssueStatus(issueId: string, status: IssueStatus): Promise<Issue>;
   /** Admin only. Promote a resident to supervisor, or return a supervisor to resident. */
   setUserRole(userId: string, role: "Resident" | "Supervisor"): Promise<PortalUser>;
+  /** Admin only. Deactivate (false) or reactivate (true) a user's account. */
+  setUserActive(userId: string, isActive: boolean): Promise<PortalUser>;
 }
 
 export interface StorageLike {
@@ -107,7 +109,7 @@ export function createMockApi(storage: StorageLike = browserStorage(), now: () =
     const id = storage.getItem(SESSION_KEY);
     if (!id) return null;
     const user = state.users.find((u) => u.id === id);
-    return user && (user.role === "Admin" || user.role === "Supervisor") ? user : null;
+    return user && user.isActive !== false && (user.role === "Admin" || user.role === "Supervisor") ? user : null;
   }
 
   function requireRole(state: PortalState, ...roles: Role[]): PortalUser {
@@ -180,6 +182,7 @@ export function createMockApi(storage: StorageLike = browserStorage(), now: () =
       const state = load();
       const user = state.users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
       if (!user || user.password !== password) throw new Error("Incorrect email or password.");
+      if (user.isActive === false) throw new Error("This account has been deactivated. Contact an administrator.");
       if (user.role === "Resident") throw new Error("This portal is for municipal staff only.");
       storage.setItem(SESSION_KEY, user.id);
       return stripPassword(user);
@@ -259,6 +262,25 @@ export function createMockApi(storage: StorageLike = browserStorage(), now: () =
         }
       }
       user.role = role;
+      save(state);
+      return stripPassword(user);
+    },
+
+    async setUserActive(userId, isActive) {
+      const state = load();
+      const admin = requireRole(state, "Admin");
+      const user = state.users.find((u) => u.id === userId);
+      if (!user) throw new Error("User not found.");
+      if (user.role === "Admin") throw new Error("Administrator accounts can't be deactivated here.");
+      if (user.id === admin.id) throw new Error("You can't deactivate your own account.");
+      if ((user.isActive !== false) === isActive) return stripPassword(user);
+      if (!isActive && user.role === "Supervisor") {
+        const open = state.issues.filter((i) => i.supervisorId === user.id && i.status !== "Fixed").length;
+        if (open > 0) {
+          throw new Error(`${user.fullName} still has ${open} open issue${open === 1 ? "" : "s"}. Reassign ${open === 1 ? "it" : "them"} first.`);
+        }
+      }
+      user.isActive = isActive;
       save(state);
       return stripPassword(user);
     },
