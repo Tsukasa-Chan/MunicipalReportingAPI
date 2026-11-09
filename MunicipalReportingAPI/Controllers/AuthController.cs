@@ -237,6 +237,11 @@ namespace MunicipalReportingAPI.Controllers
                 return Unauthorized("Invalid email or password");
             }
 
+            if (!user.IsActive)
+            {
+                return Unauthorized("This account has been deactivated. Contact an administrator.");
+            }
+
             var roles = await _userManager.GetRolesAsync(user);
 
             var accessToken = JWTHelper.GenerateToken(
@@ -320,6 +325,13 @@ namespace MunicipalReportingAPI.Controllers
             if (user == null)
             {
                 return Unauthorized("User not found");
+            }
+
+            if (!user.IsActive)
+            {
+                storedToken.IsRevoked = true;
+                await _context.SaveChangesAsync();
+                return Unauthorized("This account has been deactivated. Contact an administrator.");
             }
 
             var roles = await _userManager.GetRolesAsync(user);
@@ -487,7 +499,7 @@ namespace MunicipalReportingAPI.Controllers
         {
             var user = await _userManager.FindByEmailAsync(dto.Email);
 
-            if (user == null || !user.EmailConfirmed)
+            if (user == null || !user.EmailConfirmed || !user.IsActive)
             {
                 return Ok("If the account exists, a password reset email has been sent");
             }
@@ -524,7 +536,7 @@ namespace MunicipalReportingAPI.Controllers
         {
             var user = await _userManager.FindByEmailAsync(dto.Email);
 
-            if (user == null)
+            if (user == null || !user.IsActive)
             {
                 return BadRequest("Invalid request");
             }

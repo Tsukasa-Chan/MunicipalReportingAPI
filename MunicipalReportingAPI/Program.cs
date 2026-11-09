@@ -200,16 +200,22 @@ builder.Services
                     return;
                 }
 
-                var currentStamp = await dbContext.Users
+                var current = await dbContext.Users
                     .Where(u => u.Id == userId)
-                    .Select(u => u.SecurityStamp)
+                    .Select(u => new { u.SecurityStamp, u.IsActive })
                     .FirstOrDefaultAsync();
 
                 var tokenStamp = principal?.FindFirst("security_stamp")?.Value;
 
-                if (currentStamp == null || tokenStamp != currentStamp)
+                if (current == null || current.SecurityStamp == null || tokenStamp != current.SecurityStamp)
                 {
                     context.Fail("Session is no longer valid");
+                    return;
+                }
+
+                if (!current.IsActive)
+                {
+                    context.Fail("Account is deactivated");
                 }
             }
         };

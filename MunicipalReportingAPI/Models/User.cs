@@ -2,10 +2,13 @@
 
 namespace MunicipalReportingAPI.Models
 {
-    public class ApplicationUser:IdentityUser<int>
+    public class ApplicationUser : IdentityUser<int>
     {
         public string FullName { get; set; } = string.Empty;
         public string? ProfilePictureUrl { get; set; }
+
+        // Admin-managed activation status. Existing users remain active by default.
+        public bool IsActive { get; set; } = true;
 
         // Home/default Area. Nullable so Admin/Supervisor accounts need no residential Area;
         // normal registration requires it. The Ward is reached via Area.Ward.

@@ -11,7 +11,7 @@ using System.Security.Cryptography;
 
 namespace MunicipalReportingAPI.Controllers
 {
-    
+
     [Route("api/admin")]
     [ApiController]
     [Authorize(Roles = "Admin")]
@@ -73,6 +73,7 @@ namespace MunicipalReportingAPI.Controllers
                 FullName = u.FullName,
                 Email = u.Email,
                 EmailConfirmed = u.EmailConfirmed,
+                IsActive = u.IsActive,
                 ProfilePictureUrl = u.ProfilePictureUrl,
                 LockedOut = u.LockoutEnd != null && u.LockoutEnd > now,
                 Role = (from ur in _context.UserRoles
@@ -84,7 +85,7 @@ namespace MunicipalReportingAPI.Controllers
             });
         }
 
-        
+
         // 1. Manage users
         // List / search users. Also feeds the "pick a supervisor" dropdown: ?role=Supervisor
         [HttpGet("users")]
@@ -245,6 +246,81 @@ namespace MunicipalReportingAPI.Controllers
             return Ok(result);
         }
 
+        // Deactivate or reactivate an account. A deactivated person cannot sign in, refresh a
+        // session or use a token they already hold. Nothing they own is deleted, and
+        // reactivating restores access with the same role.
+        [HttpPut("users/{id}/active")]
+        public async Task<IActionResult> ChangeActive(int id, [FromBody] ChangeUserActiveDTO dto)
+        {
+            if (id == GetCurrentUserId())
+            {
+                return BadRequest("You cannot deactivate your own account.");
+            }
+
+            var user = await _userManager.FindByIdAsync(id.ToString());
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            if (await _userManager.IsInRoleAsync(user, AdminRole))
+            {
+                return BadRequest("Admin accounts cannot be deactivated here.");
+            }
+
+            if (user.IsActive != dto.IsActive)
+            {
+                if (!dto.IsActive)
+                {
+                    // Same rule as demoting a supervisor: their open issues would be stuck
+                    var openIssues = await _context.Issues
+                        .CountAsync(i => i.SupervisorId == user.Id && i.Status != ReportStatus.Resolved);
+
+                    if (openIssues > 0)
+                    {
+                        return BadRequest(
+                            $"{user.FullName} still has {openIssues} open issue{(openIssues == 1 ? "" : "s")}. " +
+                            $"Reassign {(openIssues == 1 ? "it" : "them")} first.");
+                    }
+                }
+
+                user.IsActive = dto.IsActive;
+
+                if (!dto.IsActive)
+                {
+                    // No way to renew the session...
+                    var refreshTokens = await _context.RefreshTokens
+                        .Where(rt => rt.UserId == user.Id && !rt.IsRevoked)
+                        .ToListAsync();
+
+                    foreach (var token in refreshTokens)
+                    {
+                        token.IsRevoked = true;
+                    }
+                }
+
+                // Saves the flag (the user is tracked by this same context) and the revoked tokens
+                await _context.SaveChangesAsync();
+
+                if (!dto.IsActive)
+                {
+                    // ...and tokens already issued stop working for good, even after reactivation
+                    var stampResult = await _userManager.UpdateSecurityStampAsync(user);
+
+                    if (!stampResult.Succeeded)
+                    {
+                        _logger.LogError("User {UserId} was deactivated but their security stamp could not be updated: {Errors}",
+                            user.Id, string.Join("; ", stampResult.Errors.Select(e => e.Description)));
+                        return StatusCode(StatusCodes.Status500InternalServerError,
+                            "The account was deactivated, but some existing sessions may remain valid until their tokens expire.");
+                    }
+                }
+            }
+
+            var result = await ProjectUsers(_userManager.Users.Where(u => u.Id == id)).FirstAsync();
+            return Ok(result);
+        }
+
         // Remove an account. Same data rules as a user deleting their own account.
         [HttpDelete("users/{id}")]
         public async Task<IActionResult> DeleteUser(int id)
@@ -275,7 +351,7 @@ namespace MunicipalReportingAPI.Controllers
             return Ok(new { message = "User deleted successfully" });
         }
 
-        
+
         // 2. Create supervisors
         // Creates the account directly in the Supervisor role. The email is marked as
         // confirmed (the admin vouches for the employee) and a password-reset email lets
@@ -364,7 +440,7 @@ namespace MunicipalReportingAPI.Controllers
             return "Aa1-" + Convert.ToBase64String(RandomNumberGenerator.GetBytes(24));
         }
 
-        
+
         // 3. Moderate reports
         // Remove a problematic or invalid report, whoever submitted it and whatever the status.
         // The Issue is the municipal record, so it is only removed when it is still Reported

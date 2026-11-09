@@ -7,6 +7,7 @@ namespace MunicipalReportingAPI.DTO
         public string FullName { get; set; } = string.Empty;
         public string? Email { get; set; }
         public bool EmailConfirmed { get; set; }
+        public bool IsActive { get; set; }
         public string? ProfilePictureUrl { get; set; }
 
         // "User", "Supervisor" or "Admin"
