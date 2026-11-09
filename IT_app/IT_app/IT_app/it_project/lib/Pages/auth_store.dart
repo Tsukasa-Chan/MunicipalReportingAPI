@@ -80,7 +80,7 @@ class UserAccount {
   }
 }
 
-enum _RefreshResult { refreshed, sessionEnded, unavailable }
+enum _RefreshResult { refreshed, sessionEnded, deactivated, unavailable }
 
 class AuthStore {
   // Wards and areas for the register dropdowns. The area ids used when
@@ -314,9 +314,14 @@ class AuthStore {
 
       return _RefreshResult.refreshed;
     } on AuthApiException catch (error) {
-      return error.statusCode == 401
-          ? _RefreshResult.sessionEnded
-          : _RefreshResult.unavailable;
+      if (error.statusCode == 401) {
+        if (error.code == 'account_deactivated' ||
+            error.message.toLowerCase().contains('deactivated')) {
+          return _RefreshResult.deactivated;
+        }
+        return _RefreshResult.sessionEnded;
+      }
+      return _RefreshResult.unavailable;
     } catch (_) {
       return _RefreshResult.unavailable;
     } finally {
@@ -337,6 +342,12 @@ class AuthStore {
       code: 'session_expired',
     );
 
+    const deactivated = AuthApiException(
+      'Your account has been deactivated. Please contact an administrator.',
+      statusCode: 401,
+      code: 'account_deactivated',
+    );
+
     final token = _accessToken;
     if (token == null) throw expired;
 
@@ -349,6 +360,11 @@ class AuthStore {
       }
 
       final result = await _refreshAccessToken();
+
+      if (result == _RefreshResult.deactivated) {
+        logout();
+        throw deactivated;
+      }
 
       if (result == _RefreshResult.sessionEnded) {
         logout();

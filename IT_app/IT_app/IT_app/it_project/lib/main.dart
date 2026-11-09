@@ -64,8 +64,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     try {
       await AuthStore.reloadProfile();
     } on AuthApiException catch (error) {
-      if (error.isSessionExpired) {
-        _sendToStart();
+      if (error.isSessionExpired || error.code == 'account_deactivated') {
+        _sendToStart(isDeactivated: error.code == 'account_deactivated');
       }
     } catch (_) {
 
@@ -76,7 +76,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   // returns the user to the startup screen.
-  void _sendToStart() {
+  void _sendToStart({bool isDeactivated = false}) {
     final navigator = _navigatorKey.currentState;
     if (navigator == null) return;
 
@@ -85,11 +85,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           (_) => false,
     );
 
-    _showSessionEndedDialog();
+    _showSessionEndedDialog(isDeactivated: isDeactivated);
   }
 
   // informs the user that their session has ended.
-  void _showSessionEndedDialog() {
+  void _showSessionEndedDialog({bool isDeactivated = false}) {
     final dialogContext = _navigatorKey.currentContext;
     if (dialogContext == null || _showingSessionDialog) return;
 
@@ -98,11 +98,13 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     showDialog<void>(
       context: dialogContext,
       builder: (context) => AlertDialog(
-        title: const Text('You have been logged out'),
-        content: const Text(
-          'Your login has ended. This happens when your email or password '
-              'is changed. Please log in again.',
-        ),
+        title: Text(isDeactivated
+            ? 'Account deactivated'
+            : 'You have been logged out'),
+        content: Text(isDeactivated
+            ? 'Your account has been deactivated by an administrator. '
+            'Please contact an administrator for assistance.'
+            : 'Your session has ended. Please log in again.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),

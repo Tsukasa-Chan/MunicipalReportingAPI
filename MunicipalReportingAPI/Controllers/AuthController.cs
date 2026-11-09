@@ -237,6 +237,11 @@ namespace MunicipalReportingAPI.Controllers
                 return Unauthorized("Invalid email or password");
             }
 
+            if (!user.IsActive)
+            {
+                return Unauthorized("This account has been deactivated. Contact an administrator.");
+            }
+
             var roles = await _userManager.GetRolesAsync(user);
 
             var accessToken = JWTHelper.GenerateToken(
@@ -285,6 +290,20 @@ namespace MunicipalReportingAPI.Controllers
                     "Invalid or expired refresh token");
             }
 
+            // Check account status before the revoked-token branch, since deactivation
+            // revokes refresh tokens and the Flutter app needs a distinct reason.
+            var user = await _userManager.FindByIdAsync(
+                storedToken.UserId.ToString());
+
+            if (user != null && !user.IsActive)
+            {
+                return Unauthorized(new
+                {
+                    code = "account_deactivated",
+                    message = "Your account has been deactivated. Please contact an administrator."
+                });
+            }
+
             if (storedToken.IsRevoked)
             {
                 // A token that was already exchanged for a new one is back. Either the client
@@ -313,9 +332,6 @@ namespace MunicipalReportingAPI.Controllers
                 return Unauthorized(
                     "Invalid or expired refresh token");
             }
-
-            var user = await _userManager.FindByIdAsync(
-                storedToken.UserId.ToString());
 
             if (user == null)
             {
@@ -487,7 +503,7 @@ namespace MunicipalReportingAPI.Controllers
         {
             var user = await _userManager.FindByEmailAsync(dto.Email);
 
-            if (user == null || !user.EmailConfirmed)
+            if (user == null || !user.EmailConfirmed || !user.IsActive)
             {
                 return Ok("If the account exists, a password reset email has been sent");
             }
@@ -524,7 +540,7 @@ namespace MunicipalReportingAPI.Controllers
         {
             var user = await _userManager.FindByEmailAsync(dto.Email);
 
-            if (user == null)
+            if (user == null || !user.IsActive)
             {
                 return BadRequest("Invalid request");
             }
