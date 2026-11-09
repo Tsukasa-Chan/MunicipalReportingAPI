@@ -99,7 +99,7 @@ class _SettingsPageState extends State<SettingsPage>
         foregroundColor: Colors.white,
         elevation: 0,
         title: const Text(
-          'FIX MY CITY',
+          'FIX MY AREA',
           style: TextStyle(
             color: Colors.white,
             fontSize: 20,
@@ -264,7 +264,7 @@ class _SettingsPageState extends State<SettingsPage>
                       context,
                       title: 'About App',
                       message:
-                      'Fix My City helps you report local issues and follow their progress.',
+                      'Fix My Area helps you report local issues and follow their progress.',
                     ),
                   ),
 

@@ -1,5 +1,8 @@
+
 import 'dart:async';
+
 import 'package:flutter/material.dart';
+
 import 'SupervisorSchedule.dart';
 import 'Supervisor_theme.dart';
 import 'auth_store.dart';
@@ -10,34 +13,42 @@ import 'Profile.dart';
 import 'report_store.dart';
 import 'Settings.dart';
 import 'StartUp.dart';
+
 class SupervisorDashboardPage extends StatefulWidget {
   const SupervisorDashboardPage({super.key});
+
   @override
   State<SupervisorDashboardPage> createState() =>
       _SupervisorDashboardPageState();
 }
+
 class _SupervisorDashboardPageState extends State<SupervisorDashboardPage> {
   static const Color _orange = supervisorPrimaryColor;
   static const Color _darkText = Color(0xFF292524);
   static const Color _secondaryText = Color(0xFF78716C);
   static const Color _cream = Color(0xFFF5F5F5);
   static const Color _borderColor = Color(0xFFE7E5E4);
+
   int _selectedIndex = 0;
+
   static const _pages = [
     _SupervisorOverview(),
     ContactPage(),
     ProfilePage(),
     SettingsPage(),
   ];
+
   static const _titles = [
     'Supervisor dashboard',
     'Contact-us',
     'Profile',
     'Settings',
   ];
+
   @override
   Widget build(BuildContext context) {
     final supervisor = AuthStore.currentUser;
+
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -68,6 +79,7 @@ class _SupervisorDashboardPageState extends State<SupervisorDashboardPage> {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
+
       drawer: Drawer(
         backgroundColor: _cream,
         child: SafeArea(
@@ -88,20 +100,48 @@ class _SupervisorDashboardPageState extends State<SupervisorDashboardPage> {
                 ),
                 currentAccountPicture: const CircleAvatar(
                   backgroundColor: Colors.white,
-                  backgroundImage: AssetImage('lib/img/FixMyAreaLogo.jpeg'),
+                  backgroundImage: AssetImage(
+                    'lib/img/FixMyAreaLogo.jpeg',
+                  ),
                 ),
                 decoration: const BoxDecoration(
                   color: _orange,
                 ),
               ),
-              _menuItem(0, Icons.dashboard_outlined, 'Dashboard'),
-              _menuItem(1, Icons.contact_mail_outlined, 'Contact-us'),
-              _menuItem(2, Icons.person_outline, 'Profile'),
-              _menuItem(3, Icons.settings_outlined, 'Settings'),
+
+              _menuItem(
+                0,
+                Icons.dashboard_outlined,
+                'Dashboard',
+              ),
+              _menuItem(
+                1,
+                Icons.contact_mail_outlined,
+                'Contact-us',
+              ),
+              _menuItem(
+                2,
+                Icons.person_outline,
+                'Profile',
+              ),
+              _menuItem(
+                3,
+                Icons.settings_outlined,
+                'Settings',
+              ),
+
               const Spacer(),
-              const Divider(color: _borderColor, height: 1),
+
+              const Divider(
+                color: _borderColor,
+                height: 1,
+              ),
+
               ListTile(
-                leading: const Icon(Icons.logout, color: _orange),
+                leading: const Icon(
+                  Icons.logout,
+                  color: _orange,
+                ),
                 title: const Text(
                   'Logout',
                   style: TextStyle(
@@ -115,94 +155,136 @@ class _SupervisorDashboardPageState extends State<SupervisorDashboardPage> {
           ),
         ),
       ),
+
       body: _pages[_selectedIndex],
     );
   }
-  Widget _menuItem(int index, IconData icon, String label) {
+
+  Widget _menuItem(
+      int index,
+      IconData icon,
+      String label,
+      ) {
     return ListTile(
       selected: _selectedIndex == index,
       selectedColor: _orange,
       selectedTileColor: const Color(0xFFF1E6E1),
       leading: Icon(
         icon,
-        color: _selectedIndex == index ? _orange : _secondaryText,
+        color: _selectedIndex == index
+            ? _orange
+            : _secondaryText,
       ),
       title: Text(
         label,
         style: TextStyle(
-          color: _selectedIndex == index ? _orange : _darkText,
-          fontWeight:
-          _selectedIndex == index ? FontWeight.bold : FontWeight.w500,
+          color: _selectedIndex == index
+              ? _orange
+              : _darkText,
+          fontWeight: _selectedIndex == index
+              ? FontWeight.bold
+              : FontWeight.w500,
         ),
       ),
       onTap: () {
         Navigator.pop(context);
+
         if (index == 0) {
           setState(() => _selectedIndex = 0);
           return;
         }
+
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => _pages[index]),
+          MaterialPageRoute(
+            builder: (_) => _pages[index],
+          ),
         );
       },
     );
   }
+
   void _logout() {
     AuthStore.logout();
+
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (_) => const StartupPage()),
+      MaterialPageRoute(
+        builder: (_) => const StartupPage(),
+      ),
           (_) => false,
     );
   }
 }
+
+// ============================================================
+// SUPERVISOR OVERVIEW
+// ============================================================
+
 class _SupervisorOverview extends StatefulWidget {
   const _SupervisorOverview();
+
   @override
-  State<_SupervisorOverview> createState() => _SupervisorOverviewState();
+  State<_SupervisorOverview> createState() =>
+      _SupervisorOverviewState();
 }
+
 class _SupervisorOverviewState extends State<_SupervisorOverview> {
   static const Color _orange = supervisorPrimaryColor;
   static const Color _darkText = Color(0xFF292524);
   static const Color _secondaryText = Color(0xFF78716C);
-  static const Color _borderColor = Color(0xFFE7E5E4);
-  static const Color _cream = Color(0xFFF5F5F5);
+
   DateTime _now = DateTime.now();
   Timer? _clockTimer;
+
   // Reports fetched from the backend for the logged-in supervisor.
   List<ReportRequest> _supervisorReports = [];
+
   bool _isLoadingReports = true;
   String? _reportsError;
+
   @override
   void initState() {
     super.initState();
+
     _loadSupervisorReports();
-    _clockTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (mounted) {
-        setState(() => _now = DateTime.now());
-      }
-    });
+
+    _clockTimer = Timer.periodic(
+      const Duration(seconds: 30),
+          (_) {
+        if (mounted) {
+          setState(() => _now = DateTime.now());
+        }
+      },
+    );
   }
-  // Fetch only the reports assigned to the logged-in supervisor.
+
+  // Fetch assigned reports from the backend.
   Future<void> _loadSupervisorReports() async {
     final supervisor = AuthStore.currentUser;
+
     if (supervisor == null) {
       if (!mounted) return;
+
       setState(() {
         _isLoadingReports = false;
         _reportsError = 'No logged-in supervisor found.';
       });
+
       return;
     }
+
     try {
       final reports =
       await AuthStore.withAccessToken<List<ReportRequest>>(
             (api, accessToken) async {
           final response = await api.getRaw(
-            ApiPaths.reportsForSupervisor(supervisor.username),
+            ApiPaths.reportsForSupervisor(
+              supervisor.username,
+            ),
             accessToken: accessToken,
           );
+
           return response
               .whereType<Map>()
               .map(
@@ -213,7 +295,9 @@ class _SupervisorOverviewState extends State<_SupervisorOverview> {
               .toList();
         },
       );
+
       if (!mounted) return;
+
       setState(() {
         _supervisorReports = reports;
         _isLoadingReports = false;
@@ -221,40 +305,101 @@ class _SupervisorOverviewState extends State<_SupervisorOverview> {
       });
     } catch (e) {
       if (!mounted) return;
+
       setState(() {
         _isLoadingReports = false;
         _reportsError = e.toString();
       });
     }
   }
+
   @override
   void dispose() {
     _clockTimer?.cancel();
     super.dispose();
   }
+
   @override
   Widget build(BuildContext context) {
-    final supervisor = AuthStore.currentUser;
-    // Use the reports returned by the backend for the dashboard totals.
+    // Backend reports are used for both the overview
+    // statistics and today's scheduled job count.
     final reports = _supervisorReports;
-    // The schedule still uses the existing local ReportStore data.
-    final todayJobs = ReportStore.reportsForSupervisorOnDate(
-      supervisorUsername: supervisor?.username ?? '',
-      date: _now,
-    );
-    final todayJobCount = ReportStore.groupReports(todayJobs).length;
-    final today = DateTime.now();
+
+    // --------------------------------------------------------
+    // TODAY'S ACTIVE JOBS
+    //
+    // Include:
+    //   - Reported
+    //   - In Progress
+    //
+    // Exclude:
+    //   - Resolved
+    //
+    // Only include jobs scheduled for today's date.
+    // --------------------------------------------------------
+
+    final todayJobs = reports.where((report) {
+      final scheduledAt = report.scheduledAt;
+
+      if (scheduledAt == null) {
+        return false;
+      }
+
+      // Resolved jobs are not active jobs.
+      final status = report.status.trim().toLowerCase();
+
+      if (status == 'resolved') {
+        return false;
+      }
+
+      // Compare the scheduled date with today's date.
+      final scheduledDate = scheduledAt.toLocal();
+
+      final isScheduledToday =
+          scheduledDate.year == _now.year &&
+              scheduledDate.month == _now.month &&
+              scheduledDate.day == _now.day;
+
+      return isScheduledToday;
+    }).toList();
+
+    // Group reports so multiple reports about the same
+    // issue are counted as one job.
+    final todayJobCount =
+        ReportStore.groupReports(todayJobs).length;
+
+    // --------------------------------------------------------
+    // REPORT OVERVIEW
+    //
+    // These statistics include all assigned reports,
+    // including resolved reports.
+    // --------------------------------------------------------
+
     final reported = reports
-        .where((report) => report.status == 'Reported')
+        .where(
+          (report) => report.status == 'Reported',
+    )
         .length;
+
     final inProgress = reports
-        .where((report) => report.status == 'InProgress' || report.status == 'In progress')
+        .where(
+          (report) =>
+      report.status == 'InProgress' ||
+          report.status == 'In progress',
+    )
         .length;
+
     final resolved = reports
-        .where((report) => report.status == 'Resolved')
+        .where(
+          (report) => report.status == 'Resolved',
+    )
         .length;
+
     return Container(
-      decoration: pageBackgroundDecoration(isSupervisor: true),
+      decoration: pageBackgroundDecoration(
+        isSupervisor: true,
+      ),
+
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
@@ -266,7 +411,9 @@ class _SupervisorOverviewState extends State<_SupervisorOverview> {
               color: _darkText,
             ),
           ),
+
           const SizedBox(height: 8),
+
           const Text(
             'Monitor incoming reports and field activity.',
             style: TextStyle(
@@ -274,21 +421,31 @@ class _SupervisorOverviewState extends State<_SupervisorOverview> {
               fontSize: 15,
             ),
           ),
+
           const SizedBox(height: 20),
+
+          // Today's schedule card.
           _ScheduleCard(
             now: _now,
             jobCount: todayJobCount,
+            isLoading: _isLoadingReports,
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => SupervisorSchedulePage(day: _now),
+                builder: (_) => SupervisorSchedulePage(
+                  day: _now,
+                ),
               ),
             ).then((_) {
-              if (mounted) _loadSupervisorReports();
+              if (mounted) {
+                _loadSupervisorReports();
+              }
             }),
           ),
+
           const SizedBox(height: 24),
-          // Show the loading or error message while fetching dashboard data.
+
+          // Display loading and error messages.
           if (_isLoadingReports)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 12),
@@ -304,10 +461,14 @@ class _SupervisorOverviewState extends State<_SupervisorOverview> {
               child: Column(
                 children: [
                   Text(
-                    'Could not load assigned reports.\n$_reportsError',
-                    style: const TextStyle(color: Colors.red),
+                    'Could not load assigned reports.\n'
+                        '$_reportsError',
+                    style: const TextStyle(
+                      color: Colors.red,
+                    ),
                     textAlign: TextAlign.center,
                   ),
+
                   TextButton(
                     onPressed: _loadSupervisorReports,
                     child: const Text(
@@ -321,6 +482,7 @@ class _SupervisorOverviewState extends State<_SupervisorOverview> {
                 ],
               ),
             ),
+
           const Text(
             'REPORT OVERVIEW',
             style: TextStyle(
@@ -329,7 +491,9 @@ class _SupervisorOverviewState extends State<_SupervisorOverview> {
               color: _darkText,
             ),
           ),
+
           const SizedBox(height: 12),
+
           Wrap(
             spacing: 12,
             runSpacing: 12,
@@ -339,16 +503,19 @@ class _SupervisorOverviewState extends State<_SupervisorOverview> {
                 value: reports.length,
                 icon: Icons.inbox_outlined,
               ),
+
               _StatCard(
                 label: 'Reported',
                 value: reported,
                 icon: Icons.assignment_outlined,
               ),
+
               _StatCard(
                 label: 'In progress',
                 value: inProgress,
                 icon: Icons.build_circle_outlined,
               ),
+
               _StatCard(
                 label: 'Resolved',
                 value: resolved,
@@ -362,49 +529,70 @@ class _SupervisorOverviewState extends State<_SupervisorOverview> {
   }
 }
 
+// ============================================================
+// TODAY'S SCHEDULE CARD
+// ============================================================
+
 class _ScheduleCard extends StatelessWidget {
   const _ScheduleCard({
     required this.now,
     required this.jobCount,
+    required this.isLoading,
     required this.onTap,
   });
+
   static const Color _orange = supervisorPrimaryColor;
   static const Color _darkText = Color(0xFF292524);
   static const Color _secondaryText = Color(0xFF78716C);
   static const Color _borderColor = Color(0xFFE7E5E4);
+
   final DateTime now;
   final int jobCount;
+  final bool isLoading;
   final VoidCallback onTap;
+
   @override
   Widget build(BuildContext context) {
     final date =
         '${now.day.toString().padLeft(2, '0')}/'
-        '${now.month.toString().padLeft(2, '0')}/${now.year}';
+        '${now.month.toString().padLeft(2, '0')}/'
+        '${now.year}';
+
     final time =
         '${now.hour.toString().padLeft(2, '0')}:'
         '${now.minute.toString().padLeft(2, '0')}';
+
     return Card(
       color: Colors.white,
       elevation: 2,
       shadowColor: Colors.black.withValues(alpha: 0.06),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: _borderColor),
+        side: const BorderSide(
+          color: _borderColor,
+        ),
       ),
+
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
         onTap: onTap,
+
         child: Padding(
           padding: const EdgeInsets.all(18),
+
           child: Row(
             children: [
               const CircleAvatar(
                 radius: 25,
                 backgroundColor: _orange,
                 foregroundColor: Colors.white,
-                child: Icon(Icons.calendar_month_outlined),
+                child: Icon(
+                  Icons.calendar_month_outlined,
+                ),
               ),
+
               const SizedBox(width: 14),
+
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -417,7 +605,9 @@ class _ScheduleCard extends StatelessWidget {
                         fontSize: 17,
                       ),
                     ),
+
                     const SizedBox(height: 5),
+
                     Text(
                       '$date • $time',
                       style: const TextStyle(
@@ -425,9 +615,13 @@ class _ScheduleCard extends StatelessWidget {
                         fontSize: 14,
                       ),
                     ),
+
                     const SizedBox(height: 3),
+
                     Text(
-                      '$jobCount job(s) allocated today',
+                      isLoading
+                          ? 'Loading today’s jobs...'
+                          : '$jobCount job(s) allocated today',
                       style: const TextStyle(
                         color: _secondaryText,
                         fontSize: 14,
@@ -436,6 +630,7 @@ class _ScheduleCard extends StatelessWidget {
                   ],
                 ),
               ),
+
               const Icon(
                 Icons.chevron_right,
                 color: _orange,
@@ -447,33 +642,46 @@ class _ScheduleCard extends StatelessWidget {
     );
   }
 }
+
+// ============================================================
+// REPORT OVERVIEW STAT CARD
+// ============================================================
+
 class _StatCard extends StatelessWidget {
   const _StatCard({
     required this.label,
     required this.value,
     required this.icon,
   });
+
   static const Color _orange = supervisorPrimaryColor;
   static const Color _darkText = Color(0xFF292524);
   static const Color _secondaryText = Color(0xFF78716C);
   static const Color _borderColor = Color(0xFFE7E5E4);
+
   final String label;
   final int value;
   final IconData icon;
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: 155,
+
       child: Card(
         color: Colors.white,
         elevation: 2,
         shadowColor: Colors.black.withValues(alpha: 0.06),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),
-          side: const BorderSide(color: _borderColor),
+          side: const BorderSide(
+            color: _borderColor,
+          ),
         ),
+
         child: Padding(
           padding: const EdgeInsets.all(16),
+
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -482,7 +690,9 @@ class _StatCard extends StatelessWidget {
                 color: _orange,
                 size: 27,
               ),
+
               const SizedBox(height: 12),
+
               Text(
                 '$value',
                 style: const TextStyle(
@@ -491,7 +701,9 @@ class _StatCard extends StatelessWidget {
                   color: _darkText,
                 ),
               ),
+
               const SizedBox(height: 3),
+
               Text(
                 label,
                 style: const TextStyle(
