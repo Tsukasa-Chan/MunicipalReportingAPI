@@ -47,7 +47,7 @@ class _HomePageState extends State<HomePage> {
   String? choice;
   String location = '';
   String? additionalInfo;
-  late final String selectedArea;
+  late String selectedArea;
   // Loads this user's area issues and stats; stays null if the user has no area.
   AreaFeedController? _feed;
   @override
@@ -68,6 +68,33 @@ class _HomePageState extends State<HomePage> {
         ..refresh();
     }
   }
+  // Keep the dashboard in sync after the registered area changes in Profile.
+  // A normal refresh of the old controller would still load the old area ID.
+  void _syncDashboardArea() {
+    if (!mounted) return;
+
+    final user = AuthStore.currentUser;
+    final updatedArea = user?.ward ?? 'Not set';
+    final updatedAreaId = user?.areaId;
+    final oldFeed = _feed;
+
+    if (selectedArea == updatedArea && oldFeed?.areaId == updatedAreaId) {
+      return;
+    }
+
+    final newFeed = updatedAreaId == null
+        ? null
+        : AreaFeedController(areaId: updatedAreaId, api: widget.issuesApi);
+
+    setState(() {
+      selectedArea = updatedArea;
+      _feed = newFeed;
+    });
+
+    oldFeed?.dispose();
+    newFeed?.refresh();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -247,6 +274,7 @@ class _HomePageState extends State<HomePage> {
           // What happens when the user pulls down.
           onRefresh: () async {
             // Reload the issues and stats (does nothing if there is no area).
+            _syncDashboardArea();
             await _feed?.refresh();
           },
           // The scrollable page content.
@@ -300,7 +328,11 @@ class _HomePageState extends State<HomePage> {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const ProfilePage()),
-            );
+            ).then((_) {
+              // Profile/Edit Profile may have changed the registered area.
+              // Recreate the feed using the updated area ID on return.
+              _syncDashboardArea();
+            });
           }
         },
         items: const [
