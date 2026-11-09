@@ -14,6 +14,7 @@ import 'auth_store.dart';
 import 'Supervisor_theme.dart';
 import 'report_store.dart';
 import 'auth_api.dart';
+import 'area_location_validator.dart';
 
 class ReportingPage extends StatefulWidget {
   const ReportingPage({super.key, this.reportToEdit});
@@ -280,6 +281,8 @@ class _ReportingPageState extends State<ReportingPage> {
                     onChanged: (ward) => setState(() {
                       selectedWard = ward;
                       selectedCommunityArea = null;
+                      locationController.clear();
+                      pinLocationController.clear();
                     }),
                   ),
                   if (selectedWard != null) ...[
@@ -311,8 +314,13 @@ class _ReportingPageState extends State<ReportingPage> {
                           .toList(),
                       validator: (value) =>
                       value == null ? 'Please select your area' : null,
-                      onChanged: (value) =>
-                          setState(() => selectedCommunityArea = value),
+                      onChanged: (value) => setState(() {
+                        if (value != selectedCommunityArea) {
+                          locationController.clear();
+                          pinLocationController.clear();
+                        }
+                        selectedCommunityArea = value;
+                      }),
                     ),
                   ],
                   const SizedBox(height: 14),
@@ -454,7 +462,24 @@ class _ReportingPageState extends State<ReportingPage> {
     );
   }
 
+  // Validate the map coordinates locally, without an extra Nominatim call.
+  // The validator uses mapped GIS rectangles or clearly approximate fallbacks.
+  Future<String?> _locationAreaError(LatLng point, String expectedArea) async {
+    return AreaLocationValidator.errorFor(
+      expectedArea,
+      point.latitude,
+      point.longitude,
+    );
+  }
+
   Future<void> _openLocationPicker() async {
+    if (selectedCommunityArea == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select your ward and area before choosing a location.')),
+      );
+      return;
+    }
+    final expectedArea = selectedCommunityArea!;
     final permissionStatus = await Permission.locationWhenInUse.request();
     if (!mounted) return;
     await _refreshLocationPermissionState();
@@ -468,7 +493,20 @@ class _ReportingPageState extends State<ReportingPage> {
         permissionStatus.isGranted || permissionStatus.isLimited,
       ),
     );
-    if (!mounted || selection == null) return;
+    if (!mounted || selection == null || selection.location == null) return;
+    if (selectedCommunityArea != expectedArea) return;
+    final areaError = await _locationAreaError(selection.location!, expectedArea);
+    if (!mounted) return;
+    if (areaError != null) {
+      setState(() {
+        locationController.clear();
+        pinLocationController.clear();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(areaError), duration: const Duration(seconds: 5)),
+      );
+      return;
+    }
     locationController.text = selection.address.isNotEmpty
         ? selection.address
         : _formatCoordinates(selection.location);
@@ -598,6 +636,18 @@ class _ReportingPageState extends State<ReportingPage> {
     final existing = widget.reportToEdit;
     setState(() => _isSaving = true);
     try {
+      final areaError = await _locationAreaError(coordinates, selectedCommunityArea!);
+      if (!mounted) return;
+      if (areaError != null) {
+        setState(() {
+          locationController.clear();
+          pinLocationController.clear();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(areaError), duration: const Duration(seconds: 5)),
+        );
+        return;
+      }
       if (existing != null) {
         final serverId = existing.backendId;
         if (serverId == null) {
@@ -766,6 +816,20 @@ class _LocationPickerDialogState extends State<_LocationPickerDialog> {
   bool _locationServicesDisabled = false;
   String? _searchError;
   DateTime? _lastNominatimRequestAt;
+  int _selectionVersion = 0;
+
+  // Changing search text invalidates any previously selected pin. A fresh
+  // search result, GPS reading or map tap is required before confirmation.
+  void _onAddressEdited(String value) {
+    setState(() {
+      _selectionVersion++;
+      _selectedLocation = null;
+      _searchError = null;
+    });
+    if (_styleLoaded && _mapController != null) {
+      unawaited(_mapController!.clearCircles());
+    }
+  }
 
   @override
   void initState() {
@@ -830,7 +894,9 @@ class _LocationPickerDialogState extends State<_LocationPickerDialog> {
                     onStyleLoadedCallback: _onStyleLoaded,
                     onMapClick: (_, coordinates) {
                       setState(() {
+                        _selectionVersion++;
                         _selectedLocation = coordinates;
+                        _addressController.clear();
                         _searchError = null;
                       });
                       unawaited(_updateMapMarker());
@@ -878,6 +944,7 @@ class _LocationPickerDialogState extends State<_LocationPickerDialog> {
               const SizedBox(height: 8),
               TextField(
                 controller: _addressController,
+                onChanged: _onAddressEdited,
                 textInputAction: TextInputAction.search,
                 onSubmitted: (_) {
                   if (!_isSearching && !_isLocating) _searchRoad();
@@ -902,7 +969,7 @@ class _LocationPickerDialogState extends State<_LocationPickerDialog> {
               ),
               const SizedBox(height: 12),
               FilledButton(
-                onPressed: _selectedLocation == null
+                onPressed: _selectedLocation == null || _isSearching || _isLocating
                     ? null
                     : () => Navigator.pop(
                   context,
@@ -982,7 +1049,11 @@ class _LocationPickerDialogState extends State<_LocationPickerDialog> {
       );
       if (!mounted) return;
       final location = LatLng(position.latitude, position.longitude);
-      setState(() => _selectedLocation = location);
+      setState(() {
+        _selectionVersion++;
+        _selectedLocation = location;
+        _addressController.clear();
+      });
       if (_mapController != null) {
         await _mapController!.animateCamera(
           CameraUpdate.newLatLngZoom(location, 17),
@@ -1031,6 +1102,7 @@ class _LocationPickerDialogState extends State<_LocationPickerDialog> {
   }
 
   Future<void> _reverseGeocode(LatLng location) async {
+    final version = _selectionVersion;
     try {
       await _waitForNominatimRateLimit();
       if (!mounted) return;
@@ -1044,7 +1116,7 @@ class _LocationPickerDialogState extends State<_LocationPickerDialog> {
       final response = await http
           .get(uri, headers: {'User-Agent': 'ITAppLocationPicker/1.0'})
           .timeout(const Duration(seconds: 15));
-      if (!mounted) return;
+      if (!mounted || version != _selectionVersion) return;
       if (response.statusCode != 200) {
         setState(
               () => _searchError =
@@ -1100,11 +1172,17 @@ class _LocationPickerDialogState extends State<_LocationPickerDialog> {
     }
     setState(() {
       _isSearching = true;
+      _selectedLocation = null;
       _searchError = null;
+      _selectionVersion++;
     });
+    final searchVersion = _selectionVersion;
+    if (_styleLoaded && _mapController != null) {
+      unawaited(_mapController!.clearCircles());
+    }
     try {
       await _waitForNominatimRateLimit();
-      if (!mounted) return;
+      if (!mounted || searchVersion != _selectionVersion) return;
       final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
         'format': 'jsonv2',
         'q': query,
@@ -1114,7 +1192,7 @@ class _LocationPickerDialogState extends State<_LocationPickerDialog> {
       final response = await http
           .get(uri, headers: {'User-Agent': 'ITAppLocationPicker/1.0'})
           .timeout(const Duration(seconds: 15));
-      if (!mounted) return;
+      if (!mounted || searchVersion != _selectionVersion) return;
       if (response.statusCode != 200) {
         setState(
               () => _searchError =
@@ -1150,6 +1228,9 @@ class _LocationPickerDialogState extends State<_LocationPickerDialog> {
       final location = LatLng(latitude, longitude);
       setState(() {
         _selectedLocation = location;
+        _addressController.text = (result['display_name'] as String?)?.trim().isNotEmpty == true
+            ? (result['display_name'] as String).trim()
+            : query;
         _searchError = null;
       });
       if (_mapController != null) {
@@ -1159,27 +1240,35 @@ class _LocationPickerDialogState extends State<_LocationPickerDialog> {
         await _updateMapMarker();
       }
     } on http.ClientException {
-      if (mounted)
+      if (mounted && searchVersion == _selectionVersion)
         setState(
               () => _searchError =
           'Could not connect to location search. Check your internet connection.',
         );
     } on TimeoutException {
-      if (mounted)
+      if (mounted && searchVersion == _selectionVersion)
         setState(() => _searchError = 'Location search timed out. Try again.');
     } on FormatException {
-      if (mounted)
+      if (mounted && searchVersion == _selectionVersion)
         setState(
               () => _searchError =
           'Location search returned an unreadable response. Try again.',
         );
     } catch (_) {
-      if (mounted)
+      if (mounted && searchVersion == _selectionVersion)
         setState(
               () => _searchError = 'Location search failed. Please try again.',
         );
     } finally {
-      if (mounted) setState(() => _isSearching = false);
+      if (mounted) {
+        setState(() {
+          // A failed lookup must not leave unverified address text behind.
+          if (searchVersion == _selectionVersion && _selectedLocation == null) {
+            _addressController.clear();
+          }
+          _isSearching = false;
+        });
+      }
     }
   }
 

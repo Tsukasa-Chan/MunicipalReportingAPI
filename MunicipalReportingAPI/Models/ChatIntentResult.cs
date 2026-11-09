@@ -16,7 +16,8 @@ public sealed class ChatIntentResult
         "delete_report", "edit_report", "submit_report", "privacy_policy",
         "terms_conditions", "schedule_download", "downloads", "report_status_help",
         "issue_category_help", "area_stats_help", "supervisor_schedule", "support",
-        "issue_statistics", "my_reports", "capabilities"
+        "issue_statistics", "my_reports", "capabilities",
+        "app_about", "location_help", "view_reports_help"
     };
     public static readonly HashSet<string> AllowedCategories = new(StringComparer.Ordinal)
     {
