@@ -29,6 +29,7 @@ public sealed class ChatService
         "4. Downloads: Downloading submitted reports, area statistics, the Privacy Policy and Terms & Conditions.\n" +
         "5. Supervisor features: Explaining how supervisors view their schedules (schedule PDF downloads aren't currently available).\n" +
         "6. Support: Helping with common app problems and showing how to contact support.\n\n" +
+        "7. Getting started: Understanding what Fix My Area does, choosing a report location and finding reports.\n\n" +
         "What would you like help with?";
 
     // Match broad capability questions, not task-specific requests such as
@@ -39,10 +40,141 @@ public sealed class ChatService
             "how can you help", "how can you assist me", "what are your features",
             "your features", "your capabilities", "what are you capable of",
             "what can i ask you", "what questions can i ask",
-            "tell me what you can do", "what is this chatbot for") &&
+            "tell me what you can do", "what is this chatbot for",
+            "what do you help with", "what is your purpose",
+            "what is your job", "what do you offer", "what can this chatbot do",
+            "how does this chatbot help") &&
         !Has(t, "report", "reports", "pothole", "issues", "issue", "statistics",
             "email", "password", "download", "privacy", "terms", "schedule",
             "supervisor", "profile", "registration", "register");
+
+    // Common short forms cannot be handled by edit-distance correction because
+    // that deliberately skips words shorter than four characters.
+    // Apply only explicit, unambiguous substitutions; do not guess arbitrary short words.
+    private static readonly IReadOnlyDictionary<string, string> CommonWordCorrections =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["wat"] = "what",
+            ["wht"] = "what",
+            ["wot"] = "what",
+            ["whut"] = "what",
+            ["hw"] = "how",
+            ["u"] = "you",
+            ["ur"] = "your",
+            ["abt"] = "about",
+            ["plz"] = "please",
+            ["pls"] = "please",
+            ["veiw"] = "view",
+            ["veiws"] = "views",
+            ["reprots"] = "reports",
+            ["submitt"] = "submit",
+            ["locaton"] = "location",
+            ["regster"] = "register",
+            ["pasword"] = "password",
+            ["whats"] = "what is",
+            ["wats"] = "what is"
+        };
+
+    // A deliberately small vocabulary avoids interpreting unrelated questions as app help.
+    // Only correct isolated words with an unambiguous close match, not entire sentences.
+    private static readonly string[] HelpVocabulary =
+    {
+        "location", "locations", "address", "addresses", "report", "reports",
+        "reporting", "submitted", "submit", "submission", "profile", "dashboard",
+        "application", "municipal", "municipality", "about", "purpose", "view",
+        "show", "find", "where", "enter", "select", "choose", "search",
+        "register", "registration", "login", "password", "forgot", "reset",
+        "email", "verify", "verification", "change", "update", "delete",
+        "edit", "download", "statistics", "statistic", "issues", "issue",
+        "area", "areas", "category", "categories", "status", "supervisor",
+        "schedule", "support", "contact", "privacy", "terms", "conditions",
+        "water", "potholes", "pothole", "electricity", "waste", "roads"
+    };
+
+    private static int EditDistance(string a, string b)
+    {
+        if (Math.Abs(a.Length - b.Length) > 2) return 3;
+        var previous = Enumerable.Range(0, b.Length + 1).ToArray();
+        for (int i = 1; i <= a.Length; i++)
+        {
+            var next = new int[b.Length + 1];
+            next[0] = i;
+            for (int j = 1; j <= b.Length; j++)
+                next[j] = Math.Min(Math.Min(previous[j] + 1, next[j - 1] + 1),
+                    previous[j - 1] + (a[i - 1] == b[j - 1] ? 0 : 1));
+            previous = next;
+        }
+        // Adjacent swapped letters are a common single typing error.
+        if (a.Length == b.Length)
+            for (int i = 0; i < a.Length - 1; i++)
+                if (a[i] == b[i + 1] && a[i + 1] == b[i] &&
+                    a[..i] == b[..i] && a[(i + 2)..] == b[(i + 2)..])
+                    return 1;
+        return previous[b.Length];
+    }
+
+    private static string CorrectSimpleTypos(string input)
+    {
+        var clean = Clean(input);
+        if (clean.Length == 0) return clean;
+        return Regex.Replace(clean, @"\b[a-z]+\b", match =>
+        {
+            var word = match.Value;
+            if (CommonWordCorrections.TryGetValue(word, out var correction))
+                return correction;
+            if (word.Length < 4 || HelpVocabulary.Contains(word)) return word;
+            int threshold = word.Length >= 6 ? 2 : 1;
+            var nearest = HelpVocabulary
+                .Where(candidate => Math.Abs(candidate.Length - word.Length) <= threshold)
+                .Select(candidate => (Word: candidate, Distance: EditDistance(word, candidate)))
+                .Where(x => x.Distance <= threshold)
+                .OrderBy(x => x.Distance).ToArray();
+            // An ambiguous correction is worse than a fallback response.
+            return nearest.Length > 0 &&
+                   (nearest.Length == 1 || nearest[0].Distance < nearest[1].Distance)
+                ? nearest[0].Word : word;
+        });
+    }
+
+    private const string AboutApp =
+        "Fix My Area is a municipal issue reporting app. Residents can report problems " +
+        "such as potholes, water leaks, power problems and waste collection issues. " +
+        "You can select the problem's location, submit a description and optional photo, " +
+        "track your reports and see issue statistics for your registered area. " +
+        "Municipal supervisors can see their assigned work and update issue statuses.";
+
+    private const string LocationHelp =
+        "To enter a location when reporting a problem: 1. Open Reporting and choose " +
+        "the issue details. 2. Tap the Location field or the map icon to open the map. " +
+        "3. Search for a road, address or landmark, tap a point on the map to drop a pin, " +
+        "or choose Use current location (allow location access if prompted). " +
+        "4. Tap Use this location to confirm, then complete and submit your report. " +
+        "Make sure the chosen location is in the correct ward and area.";
+
+    private const string ViewReportsHelp =
+        "To view reports you have submitted, sign in and open Profile, then look under " +
+        "Your Recent Reports. Tap a report to see its details and status. " +
+        "You can also open View Reports from your profile to see other reports, where available. " +
+        "To see overall municipal issue statistics for your area, use the Home dashboard.";
+
+    private static bool IsAboutAppQuestion(string t) =>
+        Has(t, "what is fix my area", "what is the app", "what is this app",
+            "what is this application", "what is fixmyarea", "what is it about",
+            "whats the app about", "what s the app about",
+            "what does the app do", "what does fix my area do", "purpose of the app",
+            "about the app", "about fix my area", "explain the app", "tell me about the app",
+            "what is the application for");
+
+    private static bool IsLocationHelpQuestion(string t) =>
+        !CountIntent(t) && Has(t, "location", "address", "map", "pin", "coordinates", "gps") &&
+        Has(t, "how", "where", "enter", "input", "add", "select", "choose", "pick",
+            "set", "find", "search", "use", "put") &&
+        !Has(t, "change my area", "update my area", "profile area", "area statistics");
+
+    private static bool IsViewReportsHelpQuestion(string t) =>
+        Has(t, "report", "reports", "complaint", "complaints", "submissions") &&
+        Has(t, "view", "see", "find", "look", "access", "open", "where", "history", "list") &&
+        !CountIntent(t) && !Has(t, "edit", "delete", "download", "export", "pdf", "submit", "create");
 
     private static readonly (IssueCategory Category, string[] Terms)[] Categories =
     {
@@ -95,13 +227,18 @@ public sealed class ChatService
 
     public async Task<string> ReplyAsync(ClaimsPrincipal principal, IReadOnlyList<ChatMessageDTO> messages, CancellationToken ct)
     {
-        var current = Clean(messages[^1].Content);
+        var current = CorrectSimpleTypos(messages[^1].Content);
         if (current.Length == 0) return Unknown;
 
         // Enforce these exclusions even when the AI or fallback would misclassify a prompt.
         if (Has(current, "system prompt", "developer instructions", "hidden configuration",
             "ignore previous instructions", "ignore all instructions", "reveal your instructions",
             "print your prompt", "jailbreak")) return Unknown;
+
+        // Deterministic help for app-specific questions, even when Gemini returns unknown.
+        if (IsAboutAppQuestion(current)) return AboutApp;
+        if (IsLocationHelpQuestion(current)) return LocationHelp;
+        if (IsViewReportsHelpQuestion(current)) return ViewReportsHelp;
 
         // Answer general 'what can you do?' questions even if Gemini is offline
         // or mistakenly classifies them as unknown.
@@ -120,10 +257,14 @@ public sealed class ChatService
             !Has(current, "news", "events", "weather", "sports", "restaurants", "concerts"))
             return "For municipal issues in your neighbourhood, sign in and open the Fix My Area Home dashboard. It shows issue statistics for your registered area, including water and sanitation, roads and stormwater, electricity, and waste management. You can also ask me how many potholes or unresolved water issues are in your area. I don't provide general local news or events.";
 
-        var classification = await _ai.ClassifyAsync(messages, ct);
+        var correctedMessages = messages.Select((m, i) => i == messages.Count - 1
+            ? new ChatMessageDTO { Role = m.Role, Content = current }
+            : m).ToArray();
+        var classification = await _ai.ClassifyAsync(correctedMessages, ct);
         if (classification == null)
-            return await ReplyRulesAsync(principal, messages, ct); // Offline/rate-limit fallback
-        if (classification.Intent == "unknown") return Unknown;
+            return await ReplyRulesAsync(principal, correctedMessages, ct); // Offline/rate-limit fallback
+        if (classification.Intent == "unknown")
+            return await ReplyRulesAsync(principal, correctedMessages, ct);
 
         if (classification.Intent == "issue_statistics" || classification.Intent == "my_reports")
             return await AnswerStructuredStatisticsAsync(principal, classification, ct);
@@ -153,6 +294,9 @@ public sealed class ChatService
             "supervisor_schedule" => "how do i view supervisor schedule",
             "support" => "how do i contact support",
             "capabilities" => "what can you help me with",
+            "app_about" => "what is the app about",
+            "location_help" => "how do i enter my location",
+            "view_reports_help" => "how do i view reports",
             _ => null
         };
         if (canonical == null) return Unknown;
@@ -246,11 +390,14 @@ public sealed class ChatService
 
     private async Task<string> ReplyRulesAsync(ClaimsPrincipal principal, IReadOnlyList<ChatMessageDTO> messages, CancellationToken ct)
     {
-        var t = Clean(messages[^1].Content);
+        var t = CorrectSimpleTypos(messages[^1].Content);
         if (t.Length == 0) return Unknown;
         if (Has(t, "cricket", "football", "rugby", "recipe", "weather", "politics", "joke", "movie", "bitcoin", "stock market",
             "system prompt", "developer instructions", "hidden configuration", "ignore previous instructions",
             "ignore all instructions", "reveal your instructions", "print your prompt", "jailbreak")) return Unknown;
+        if (IsAboutAppQuestion(t)) return AboutApp;
+        if (IsLocationHelpQuestion(t)) return LocationHelp;
+        if (IsViewReportsHelpQuestion(t)) return ViewReportsHelp;
         if (Has(t, "hello", "hi", "hey", "good morning", "good afternoon"))
             return "Hi! I'm the Fix My Area help assistant. You can ask how to use the app or ask how many municipal issues are in your registered area.";
         if (Has(t, "thank you", "thanks", "thank u")) return "You're welcome! What else would you like to know about Fix My Area?";

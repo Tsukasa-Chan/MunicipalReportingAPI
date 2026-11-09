@@ -18,7 +18,8 @@ class ApiConfig {
   static String get baseUrl {
     if (_envBaseUrl.isNotEmpty) return normalise(_envBaseUrl);
 
-    return 'https://municipalreportingapi.runasp.net';
+      return 'https://municipalreportingapi.runasp.net';
+
   }
 
   // checks and formats the server address.

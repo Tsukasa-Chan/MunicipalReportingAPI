@@ -50,6 +50,15 @@ public sealed class AiIntentService
         you assist me?", "What are your features?") are capabilities, not unknown.
         Questions asking HOW to perform a specific task should use that task's
         intent instead of capabilities (e.g. "Help me delete a report" = delete_report).
+        Recognize simple spelling mistakes and common texting forms (such as
+        "wat do you do", "wat do u do", "wht can you do", "locaton",
+        "veiw reports", "reprots") when the question clearly concerns a
+        supported feature. General questions about what YOU (the chatbot)
+        do are capabilities, even if they do not mention the app by name.
+        Use app_about for questions about the purpose of Fix My Area or what the app is about.
+        Use location_help for instructions on entering an address, dropping a map pin,
+        or using current location while submitting a report.
+        Use view_reports_help for HOW to view or find submitted reports (not their counts).
         Allowed features: registration, login, email verification, password resets/changes,
         changing email/name/profile, creating/editing/deleting reports, issue categories,
         report statuses, downloading reports/area stats/privacy policy/terms, viewing

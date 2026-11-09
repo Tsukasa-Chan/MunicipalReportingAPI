@@ -38,7 +38,8 @@ class AuthApi {
   static String _configuredBaseUrl() {
     if (_envBaseUrl.isNotEmpty) return _envBaseUrl;
 
-    return 'https://municipalreportingapi.runasp.net';
+     return 'https://municipalreportingapi.runasp.net';
+
   }
 
   final http.Client _client;
