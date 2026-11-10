@@ -672,10 +672,6 @@ class _RegisterPageState extends State<RegisterPage> {
       return 'Use uppercase, lowercase, and a number';
     }
 
-    if (!RegExp(r'^[A-Za-z0-9@#_]+$').hasMatch(password)) {
-      return 'Only letters, numbers, @, #, and _ are allowed';
-    }
-
     return null;
   }
 
