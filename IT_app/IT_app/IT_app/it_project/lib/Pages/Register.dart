@@ -303,6 +303,9 @@ class _RegisterPageState extends State<RegisterPage> {
                           _PasswordRequirement(
                             text: 'At least one number',
                           ),
+                          _PasswordRequirement(
+                            text: 'At least one special character (e.g. @, #, !, _)',
+                          ),
                         ],
                       ),
                     ),
@@ -670,6 +673,10 @@ class _RegisterPageState extends State<RegisterPage> {
         !RegExp(r'[a-z]').hasMatch(password) ||
         !RegExp(r'[0-9]').hasMatch(password)) {
       return 'Use uppercase, lowercase, and a number';
+    }
+
+    if (!RegExp(r'[^a-zA-Z0-9]').hasMatch(password)) {
+      return 'Password must contain at least one special character';
     }
 
     return null;
