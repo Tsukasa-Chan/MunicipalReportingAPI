@@ -122,6 +122,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     if (!RegExp(r'[@#_]').hasMatch(password)) {
       return 'Password must contain at least one special character (@, #, _)';
     }
+
     return null;
   }
 
